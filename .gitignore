@@ -24,7 +24,7 @@ logs
 !.env.example
 
 # Database
-data/
+/data/
 *.db
 
 # Drizzle
