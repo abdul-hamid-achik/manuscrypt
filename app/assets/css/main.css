@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* Manuscrypt — Literary fiction writing platform */
+
+/* Custom scrollbar for writing areas */
+.writing-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.writing-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.writing-area::-webkit-scrollbar-thumb {
+  background: var(--ui-border);
+  border-radius: 3px;
+}
+
+/* TipTap editor prose styling */
+.ProseMirror {
+  outline: none;
+  min-height: 100%;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--ui-text-dimmed);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Smooth focus transitions */
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Distraction-free writing mode */
+.writing-mode .ProseMirror {
+  max-width: 65ch;
+  margin: 0 auto;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.125rem;
+  line-height: 1.8;
+}

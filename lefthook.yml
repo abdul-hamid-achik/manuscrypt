@@ -1,0 +1,7 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: tests
+      run: bun run test:run
+    - name: knip
+      run: bunx knip

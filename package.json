@@ -1,0 +1,50 @@
+{
+  "name": "manuscrypt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39",
+    "@nuxt/ui": "^3.0.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@tiptap/extension-character-count": "^2",
+    "@tiptap/extension-placeholder": "^2",
+    "@tiptap/extension-typography": "^2",
+    "@tiptap/pm": "^2",
+    "@tiptap/starter-kit": "^2",
+    "@tiptap/vue-3": "^2",
+    "@vueuse/core": "^12",
+    "better-sqlite3": "^11",
+    "docx": "^9.6.0",
+    "drizzle-orm": "^0.38",
+    "nanoid": "^5",
+    "nuxt": "^3.16.0",
+    "pinia": "^3.0.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@evilmartians/lefthook": "^2.1.1",
+    "@iconify-json/lucide": "^1.2.94",
+    "@nuxt/test-utils": "^4.0.0",
+    "@types/better-sqlite3": "^7",
+    "@vitest/coverage-v8": "^4.0.18",
+    "@vue/test-utils": "^2.4.6",
+    "drizzle-kit": "^0.30",
+    "happy-dom": "^20.7.0",
+    "knip": "^5.85.0",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
+  }
+}
