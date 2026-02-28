@@ -72,8 +72,8 @@ function statusColor(status: ChapterStatus | string) {
           <span class="text-xs text-(--ui-text-dimmed)">
             {{ (chapter.wordCount ?? 0).toLocaleString() }} words
           </span>
-          <UBadge :color="statusColor(chapter.status) as any" variant="subtle" size="xs" class="capitalize">
-            {{ chapter.status }}
+          <UBadge :color="statusColor(chapter.status ?? 'planned') as any" variant="subtle" size="xs" class="capitalize">
+            {{ chapter.status ?? 'planned' }}
           </UBadge>
         </div>
       </NuxtLink>

@@ -91,14 +91,14 @@ export async function createScene(input: CreateSceneInput) {
 }
 
 export async function updateScene(id: string, input: UpdateSceneInput) {
-  return $fetch<Scene>(`/api/scenes/${id}`, {
+  return $fetch<Scene>(`/api/scenes/${id}` as string, {
     method: 'PUT',
     body: input,
   })
 }
 
 export async function deleteScene(id: string) {
-  return $fetch(`/api/scenes/${id}`, {
+  return $fetch(`/api/scenes/${id}` as string, {
     method: 'DELETE',
   })
 }

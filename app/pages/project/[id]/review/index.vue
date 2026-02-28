@@ -43,7 +43,7 @@ function formatStatus(status: string | null): string {
 }
 
 async function markStatus(chapterId: string, newStatus: string) {
-  await $fetch(`/api/chapters/${chapterId}`, {
+  await $fetch(`/api/chapters/${chapterId}` as string, {
     method: 'PUT',
     body: { status: newStatus },
   })

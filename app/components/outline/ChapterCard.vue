@@ -96,7 +96,7 @@ async function handleDeleteScene(id: string) {
   const confirmed = window.confirm('Delete this scene? This cannot be undone.')
   if (!confirmed) return
   try {
-    await $fetch(`/api/scenes/${id}`, { method: 'DELETE' })
+    await $fetch(`/api/scenes/${id}` as string, { method: 'DELETE' })
     scenes.value = scenes.value.filter(s => s.id !== id)
   } catch {
     // handle error

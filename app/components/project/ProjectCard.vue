@@ -4,8 +4,8 @@ const props = defineProps<{
     id: string
     title: string
     genre?: string | null
-    status: string
-    targetWordCount: number
+    status: string | null
+    targetWordCount: number | null
     wordCount?: number
   }
 }>()
@@ -17,7 +17,7 @@ const statusColor = computed(() => {
     editing: 'warning',
     complete: 'success',
   }
-  return colors[props.book.status] || 'neutral'
+  return colors[props.book.status ?? 'planning'] || 'neutral'
 })
 </script>
 
@@ -44,7 +44,7 @@ const statusColor = computed(() => {
 
         <ProjectProgress
           :current="book.wordCount ?? 0"
-          :target="book.targetWordCount"
+          :target="book.targetWordCount ?? 0"
         />
       </div>
     </UCard>

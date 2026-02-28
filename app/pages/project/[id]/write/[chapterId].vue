@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
 
 // Save chapter title on change
 const debouncedTitleSave = useDebounceFn(async (title: string) => {
-  await $fetch(`/api/chapters/${chapterId}`, {
+  await $fetch(`/api/chapters/${chapterId}` as string, {
     method: "PUT",
     body: { title },
   })

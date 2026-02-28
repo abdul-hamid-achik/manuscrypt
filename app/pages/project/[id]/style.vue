@@ -33,7 +33,7 @@ async function saveToStyleGuide() {
   ].join('\n')
 
   try {
-    await $fetch(`/api/books/${projectId}`, {
+    await $fetch(`/api/books/${projectId}` as string, {
       method: 'PUT',
       body: { styleGuide: summary },
     })

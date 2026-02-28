@@ -39,7 +39,7 @@ async function handleDeleteLocation(id: string) {
   const confirmed = window.confirm('Delete this location? This cannot be undone.')
   if (!confirmed) return
   try {
-    await $fetch(`/api/locations/${id}`, { method: 'DELETE' })
+    await $fetch(`/api/locations/${id}` as string, { method: 'DELETE' })
     await refresh()
   } catch (e) {
     toast.add({ title: 'Error', description: e instanceof Error ? e.message : 'Could not delete location', color: 'error' })

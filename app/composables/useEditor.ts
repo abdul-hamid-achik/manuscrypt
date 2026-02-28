@@ -37,7 +37,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
     saveError.value = null
     try {
       const currentWordCount = editor.value?.storage.characterCount.words() ?? 0
-      await $fetch(`/api/chapters/${chapterId.value}`, {
+      await $fetch(`/api/chapters/${chapterId.value}` as string, {
         method: "PUT",
         body: { content: JSON.stringify(json), wordCount: currentWordCount },
       })

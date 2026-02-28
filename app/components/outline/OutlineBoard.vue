@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CHAPTER_STATUSES } from '~~/shared/types'
-import type { Chapter, UpdateChapterInput } from '~~/shared/types'
+import type { Chapter, ChapterStatus, UpdateChapterInput } from '~~/shared/types'
 
 const props = defineProps<{
   bookId: string
@@ -23,7 +23,7 @@ const showEditModal = ref(false)
 const editForm = reactive({
   title: '',
   synopsis: '',
-  status: 'planned',
+  status: 'planned' as ChapterStatus,
   act: 1,
 })
 
@@ -46,7 +46,7 @@ function openEditModal(chapter: Chapter) {
   editingChapter.value = chapter
   editForm.title = chapter.title
   editForm.synopsis = chapter.synopsis ?? ''
-  editForm.status = chapter.status ?? 'planned'
+  editForm.status = (chapter.status ?? 'planned') as ChapterStatus
   editForm.act = chapter.act ?? 1
   showEditModal.value = true
 }

@@ -23,11 +23,11 @@ export function createResourceComposable<
   }
 
   function update(id: string, data: TUpdate) {
-    return $fetch<TEntity>(`${basePath}/${id}`, { method: 'PUT', body: data })
+    return $fetch<TEntity>(`${basePath}/${id}` as string, { method: 'PUT', body: data })
   }
 
   function remove(id: string) {
-    return $fetch(`${basePath}/${id}`, { method: 'DELETE' })
+    return $fetch(`${basePath}/${id}` as string, { method: 'DELETE' })
   }
 
   return { useList, useOne, create, update, remove }

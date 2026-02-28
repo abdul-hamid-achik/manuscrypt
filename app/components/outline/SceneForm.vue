@@ -65,7 +65,7 @@ async function submit() {
       status: form.status,
     }
     if (props.scene) {
-      await $fetch(`/api/scenes/${props.scene.id}`, {
+      await $fetch(`/api/scenes/${props.scene.id}` as string, {
         method: 'PUT',
         body: data,
       })

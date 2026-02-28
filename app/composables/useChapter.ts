@@ -12,7 +12,7 @@ export function updateChapter(id: string, input: UpdateChapterInput) { return up
 export function deleteChapter(id: string) { return remove(id) }
 
 export async function reorderChapter(id: string, newOrder: number) {
-  return $fetch(`/api/chapters/${id}/reorder`, {
+  return $fetch(`/api/chapters/${id}/reorder` as string, {
     method: 'PUT',
     body: { newOrder },
   })

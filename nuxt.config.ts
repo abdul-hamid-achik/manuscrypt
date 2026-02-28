@@ -1,6 +1,5 @@
 export default defineNuxtConfig({
-  future: { compatibilityVersion: 4 },
-  compatibilityDate: "2025-01-01",
+  compatibilityDate: "2026-02-28",
 
   modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxt/test-utils/module"],
 

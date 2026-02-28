@@ -45,8 +45,8 @@ async function sendMessage() {
 
   // Associate the selection range with the new assistant message
   if (selection && messages.value.length > msgCountBefore) {
-    const lastMsg = messages.value[messages.value.length - 1]
-    if (lastMsg.role === "assistant") {
+    const lastMsg = messages.value.at(-1)
+    if (lastMsg?.role === "assistant") {
       messageSelections.set(lastMsg.id, selection)
     }
   }
@@ -74,8 +74,8 @@ async function executeCommand(command: string, selectedText?: string) {
   await send(userMessage, { chapterId: props.chapterId, selectedText: resolvedText }, command)
 
   if (selection && messages.value.length > msgCountBefore) {
-    const lastMsg = messages.value[messages.value.length - 1]
-    if (lastMsg.role === "assistant") {
+    const lastMsg = messages.value.at(-1)
+    if (lastMsg?.role === "assistant") {
       messageSelections.set(lastMsg.id, selection)
     }
   }
@@ -202,7 +202,7 @@ defineExpose({ executeCommand })
           >
             <UButton
               icon="i-lucide-replace"
-              size="2xs"
+              size="xs"
               variant="ghost"
               color="neutral"
               label="Replace selection"
@@ -210,7 +210,7 @@ defineExpose({ executeCommand })
             />
             <UButton
               icon="i-lucide-arrow-down-to-dot"
-              size="2xs"
+              size="xs"
               variant="ghost"
               color="neutral"
               label="Insert into editor"
