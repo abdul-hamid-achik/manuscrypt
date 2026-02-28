@@ -58,6 +58,11 @@ export function useWritingEditor(chapterId: Ref<string>) {
     }
   }, 1000)
 
+  // Reactive counter incremented on every editor transaction so that
+  // computed values that read non-reactive editor storage (e.g. CharacterCount)
+  // re-evaluate correctly.
+  const editorUpdateTick = ref(0)
+
   const editor = useTiptapEditor({
     extensions: [
       StarterKit.configure({
@@ -76,6 +81,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
       },
     },
     onUpdate: ({ editor }) => {
+      editorUpdateTick.value++
       const json = editor.getJSON()
       hasUnsavedChanges.value = JSON.stringify(json) !== lastSavedContent.value
       debouncedSave(json)
@@ -83,13 +89,15 @@ export function useWritingEditor(chapterId: Ref<string>) {
     },
   })
 
-  const wordCount = computed(
-    () => editor.value?.storage.characterCount.words() ?? 0,
-  )
+  const wordCount = computed(() => {
+    editorUpdateTick.value // subscribe to editor updates
+    return editor.value?.storage.characterCount.words() ?? 0
+  })
 
-  const characterCount = computed(
-    () => editor.value?.storage.characterCount.characters() ?? 0,
-  )
+  const characterCount = computed(() => {
+    editorUpdateTick.value // subscribe to editor updates
+    return editor.value?.storage.characterCount.characters() ?? 0
+  })
 
   // beforeunload warning for unsaved changes
   function onBeforeUnload(e: BeforeUnloadEvent) {
@@ -158,8 +166,8 @@ export function useWritingEditor(chapterId: Ref<string>) {
         ed.commands.setContent(serverJson)
         lastSavedContent.value = JSON.stringify(serverJson)
       }
-    } catch {
-      // Chapter may not exist yet
+    } catch (e) {
+      console.warn("[Manuscrypt] Failed to load chapter content:", e instanceof Error ? e.message : e)
     }
   }
 
@@ -185,6 +193,21 @@ export function useWritingEditor(chapterId: Ref<string>) {
     if (!editor.value) return ""
     const { from, to } = editor.value.state.selection
     return editor.value.state.doc.textBetween(from, to, " ")
+  }
+
+  // Snapshot the current selection (text + positions) before focus leaves
+  function getSelectionSnapshot(): { text: string; from: number; to: number } | null {
+    if (!editor.value) return null
+    const { from, to } = editor.value.state.selection
+    if (from === to) return null
+    const text = editor.value.state.doc.textBetween(from, to, " ")
+    return text ? { text, from, to } : null
+  }
+
+  // Replace content at a specific range (position-based, not selection-based)
+  function replaceRange(from: number, to: number, text: string) {
+    if (!editor.value) return
+    editor.value.chain().focus().insertContentAt({ from, to }, text).run()
   }
 
   // Get the last N words for continue-writing context
@@ -224,9 +247,11 @@ export function useWritingEditor(chapterId: Ref<string>) {
     saveStatus,
     loadContent,
     getSelectedText,
+    getSelectionSnapshot,
     getTrailingText,
     insertAtCursor,
     replaceSelection,
+    replaceRange,
     hasDraftRecovery: readonly(hasDraftRecovery),
     recoverDraft,
     dismissRecovery,

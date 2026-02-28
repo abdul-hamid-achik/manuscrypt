@@ -2,16 +2,11 @@ import { db } from "../../database"
 import { characters } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createCharacterSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.bookId) {
-    throw createError({ statusCode: 400, message: "bookId is required" })
-  }
-  if (!body.name) {
-    throw createError({ statusCode: 400, message: "name is required" })
-  }
+  const data = parseBody(createCharacterSchema, body)
 
   const id = nanoid()
   const now = new Date().toISOString()
@@ -19,18 +14,18 @@ export default defineEventHandler(async (event) => {
   db.insert(characters)
     .values({
       id,
-      bookId: body.bookId,
-      name: body.name,
-      role: body.role ?? null,
-      age: body.age ?? null,
-      archetype: body.archetype ?? null,
-      description: body.description ?? null,
-      motivation: body.motivation ?? null,
-      fear: body.fear ?? null,
-      contradiction: body.contradiction ?? null,
-      voiceNotes: body.voiceNotes ?? null,
-      traits: body.traits ?? null,
-      backstory: body.backstory ?? null,
+      bookId: data.bookId,
+      name: data.name,
+      role: data.role ?? null,
+      age: data.age ?? null,
+      archetype: data.archetype ?? null,
+      description: data.description ?? null,
+      motivation: data.motivation ?? null,
+      fear: data.fear ?? null,
+      contradiction: data.contradiction ?? null,
+      voiceNotes: data.voiceNotes ?? null,
+      traits: data.traits ?? null,
+      backstory: data.backstory ?? null,
       createdAt: now,
       updatedAt: now,
     })

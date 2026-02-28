@@ -1,6 +1,7 @@
 import { db } from "../../database"
 import { chapters } from "../../database/schema"
-import { eq, like, or, and } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
+import { tiptapJsonToText } from "../../utils/tiptap"
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -14,9 +15,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "q query param is required" })
   }
 
-  const searchTerm = `%${q.trim()}%`
+  const term = q.trim().toLowerCase()
 
-  const results = db
+  // Fetch all chapters for this book and search in-memory on plain text
+  // This avoids searching raw TipTap JSON with SQL LIKE
+  const allChapters = db
     .select({
       id: chapters.id,
       title: chapters.title,
@@ -24,38 +27,32 @@ export default defineEventHandler(async (event) => {
       content: chapters.content,
     })
     .from(chapters)
-    .where(
-      and(
-        eq(chapters.bookId, bookId),
-        or(
-          like(chapters.title, searchTerm),
-          like(chapters.content, searchTerm),
-        ),
-      ),
-    )
-    .limit(20)
+    .where(eq(chapters.bookId, bookId))
     .all()
 
-  const term = q.trim().toLowerCase()
-  return results.map(({ content, ...chapter }) => {
-    let snippet = ""
-    if (content) {
-      const lower = content.toLowerCase()
+  const results = allChapters
+    .filter((ch) => {
+      const titleMatch = ch.title.toLowerCase().includes(term)
+      const plainText = tiptapJsonToText(ch.content)
+      const contentMatch = plainText.toLowerCase().includes(term)
+      return titleMatch || contentMatch
+    })
+    .slice(0, 20)
+    .map(({ content, ...chapter }) => {
+      let snippet = ""
+      const plainText = tiptapJsonToText(content)
+      const lower = plainText.toLowerCase()
       const idx = lower.indexOf(term)
       if (idx !== -1) {
-        const start = Math.max(0, idx - 50)
-        const end = Math.min(content.length, idx + term.length + 50)
+        const start = Math.max(0, idx - 60)
+        const end = Math.min(plainText.length, idx + term.length + 60)
         snippet =
           (start > 0 ? "..." : "") +
-          content.slice(start, end) +
-          (end < content.length ? "..." : "")
-        snippet = snippet
-          .replace(/[{}"[\]]/g, "")
-          .replace(/\\n/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
+          plainText.slice(start, end).replace(/\s+/g, " ").trim() +
+          (end < plainText.length ? "..." : "")
       }
-    }
-    return { ...chapter, snippet }
-  })
+      return { ...chapter, snippet }
+    })
+
+  return results
 })

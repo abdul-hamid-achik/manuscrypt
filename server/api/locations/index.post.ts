@@ -2,16 +2,11 @@ import { db } from "../../database"
 import { locations } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createLocationSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.bookId) {
-    throw createError({ statusCode: 400, message: "bookId is required" })
-  }
-  if (!body.name) {
-    throw createError({ statusCode: 400, message: "name is required" })
-  }
+  const data = parseBody(createLocationSchema, body)
 
   const id = nanoid()
   const now = new Date().toISOString()
@@ -19,11 +14,11 @@ export default defineEventHandler(async (event) => {
   db.insert(locations)
     .values({
       id,
-      bookId: body.bookId,
-      name: body.name,
-      description: body.description ?? null,
-      sensoryDetails: body.sensoryDetails ?? null,
-      emotionalTone: body.emotionalTone ?? null,
+      bookId: data.bookId,
+      name: data.name,
+      description: data.description ?? null,
+      sensoryDetails: data.sensoryDetails ?? null,
+      emotionalTone: data.emotionalTone ?? null,
       createdAt: now,
     })
     .run()

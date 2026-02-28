@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
 
 export const books = sqliteTable("books", {
@@ -28,7 +28,10 @@ export const chapters = sqliteTable("chapters", {
   sortOrder: integer("sort_order").notNull(),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
-})
+}, (table) => [
+  index("idx_chapters_book_id").on(table.bookId),
+  index("idx_chapters_book_sort").on(table.bookId, table.sortOrder),
+])
 
 export const scenes = sqliteTable("scenes", {
   id: text("id").primaryKey(),
@@ -37,15 +40,18 @@ export const scenes = sqliteTable("scenes", {
     .references(() => chapters.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   synopsis: text("synopsis"),
-  povCharacterId: text("pov_character_id"),
-  locationId: text("location_id"),
+  povCharacterId: text("pov_character_id").references(() => characters.id, { onDelete: "set null" }),
+  locationId: text("location_id").references(() => locations.id, { onDelete: "set null" }),
   moodStart: text("mood_start"),
   moodEnd: text("mood_end"),
   targetWordCount: integer("target_word_count"),
   status: text("status").default("planned"),
   sortOrder: integer("sort_order").notNull(),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
-})
+}, (table) => [
+  index("idx_scenes_chapter_id").on(table.chapterId),
+  index("idx_scenes_chapter_sort").on(table.chapterId, table.sortOrder),
+])
 
 export const characters = sqliteTable("characters", {
   id: text("id").primaryKey(),
@@ -65,7 +71,9 @@ export const characters = sqliteTable("characters", {
   backstory: text("backstory"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
-})
+}, (table) => [
+  index("idx_characters_book_id").on(table.bookId),
+])
 
 export const characterRelationships = sqliteTable("character_relationships", {
   id: text("id").primaryKey(),
@@ -80,7 +88,11 @@ export const characterRelationships = sqliteTable("character_relationships", {
     .references(() => characters.id, { onDelete: "cascade" }),
   relationshipType: text("relationship_type").notNull(),
   description: text("description"),
-})
+}, (table) => [
+  index("idx_relationships_book_id").on(table.bookId),
+  index("idx_relationships_from").on(table.fromCharacterId),
+  index("idx_relationships_to").on(table.toCharacterId),
+])
 
 export const locations = sqliteTable("locations", {
   id: text("id").primaryKey(),
@@ -92,7 +104,9 @@ export const locations = sqliteTable("locations", {
   sensoryDetails: text("sensory_details"),
   emotionalTone: text("emotional_tone"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
-})
+}, (table) => [
+  index("idx_locations_book_id").on(table.bookId),
+])
 
 export const aiMessages = sqliteTable("ai_messages", {
   id: text("id").primaryKey(),
@@ -105,7 +119,10 @@ export const aiMessages = sqliteTable("ai_messages", {
   content: text("content").notNull(),
   command: text("command"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
-})
+}, (table) => [
+  index("idx_ai_messages_book_id").on(table.bookId),
+  index("idx_ai_messages_book_character").on(table.bookId, table.characterId),
+])
 
 export const writingSessions = sqliteTable("writing_sessions", {
   id: text("id").primaryKey(),
@@ -117,4 +134,6 @@ export const writingSessions = sqliteTable("writing_sessions", {
   duration: integer("duration"),
   startedAt: text("started_at").default(sql`(datetime('now'))`),
   endedAt: text("ended_at"),
-})
+}, (table) => [
+  index("idx_writing_sessions_book_id").on(table.bookId),
+])

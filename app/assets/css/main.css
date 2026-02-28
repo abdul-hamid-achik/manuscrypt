@@ -21,6 +21,7 @@
 .ProseMirror {
   outline: none;
   min-height: 100%;
+  padding-bottom: 40vh;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {

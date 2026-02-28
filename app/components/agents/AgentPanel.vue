@@ -1,7 +1,14 @@
 <script setup lang="ts">
+export interface SelectionSnapshot {
+  text: string
+  from: number
+  to: number
+}
+
 const props = defineProps<{
   bookId: string
   chapterId: string
+  getEditorSnapshot?: () => SelectionSnapshot | null
 }>()
 
 const isExpanded = ref(true)
@@ -14,12 +21,35 @@ const { isStreaming, streamedText, messages, error, send, clearMessages, loadHis
 // Load persisted general chat history on mount
 onMounted(() => loadHistory())
 
+// --- Selection snapshot system ---
+// Captured eagerly when the user focuses the chat input (before editor loses focus)
+const capturedSelection = ref<SelectionSnapshot | null>(null)
+
+// Track which assistant message was generated from which selection range
+const messageSelections = new Map<string, SelectionSnapshot>()
+
+function captureSelection() {
+  capturedSelection.value = props.getEditorSnapshot?.() ?? null
+}
+
 async function sendMessage() {
   const message = chatInput.value.trim()
   if (!message || isStreaming.value) return
 
   chatInput.value = ""
-  await send(message, { chapterId: props.chapterId })
+  const selection = capturedSelection.value
+  const selectedText = selection?.text || undefined
+
+  const msgCountBefore = messages.value.length
+  await send(message, { chapterId: props.chapterId, selectedText })
+
+  // Associate the selection range with the new assistant message
+  if (selection && messages.value.length > msgCountBefore) {
+    const lastMsg = messages.value[messages.value.length - 1]
+    if (lastMsg.role === "assistant") {
+      messageSelections.set(lastMsg.id, selection)
+    }
+  }
 
   // Scroll to bottom
   await nextTick()
@@ -29,16 +59,40 @@ async function sendMessage() {
 }
 
 async function executeCommand(command: string, selectedText?: string) {
+  // If no selectedText was passed (e.g. from in-panel command menu), use captured selection
+  const resolvedText = selectedText || capturedSelection.value?.text || undefined
+  const selection = selectedText
+    ? null // called from page-level handler, positions aren't tracked here
+    : capturedSelection.value
+
   const userMessage =
-    selectedText
-      ? `[/${command}] ${selectedText}`
+    resolvedText
+      ? `[/${command}] ${resolvedText}`
       : `/${command}`
 
-  await send(userMessage, { chapterId: props.chapterId, selectedText }, command)
+  const msgCountBefore = messages.value.length
+  await send(userMessage, { chapterId: props.chapterId, selectedText: resolvedText }, command)
+
+  if (selection && messages.value.length > msgCountBefore) {
+    const lastMsg = messages.value[messages.value.length - 1]
+    if (lastMsg.role === "assistant") {
+      messageSelections.set(lastMsg.id, selection)
+    }
+  }
 
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+function handleReplace(msgId: string, content: string) {
+  const selection = messageSelections.get(msgId)
+  if (selection) {
+    emit("replace", content, selection.from, selection.to)
+  } else {
+    // Fallback: replace whatever is currently selected
+    emit("replace", content, -1, -1)
   }
 }
 
@@ -52,6 +106,7 @@ watch(streamedText, async () => {
 
 const emit = defineEmits<{
   insert: [text: string]
+  replace: [text: string, from: number, to: number]
 }>()
 
 defineExpose({ executeCommand })
@@ -146,6 +201,14 @@ defineExpose({ executeCommand })
             class="mt-1.5 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <UButton
+              icon="i-lucide-replace"
+              size="2xs"
+              variant="ghost"
+              color="neutral"
+              label="Replace selection"
+              @click="handleReplace(msg.id, msg.content)"
+            />
+            <UButton
               icon="i-lucide-arrow-down-to-dot"
               size="2xs"
               variant="ghost"
@@ -182,10 +245,11 @@ defineExpose({ executeCommand })
           <AiCommandMenu @command="(cmd) => executeCommand(cmd)" />
           <UTextarea
             v-model="chatInput"
-            placeholder="Ask about your story..."
+            :placeholder="capturedSelection ? 'Ask about your selection...' : 'Ask about your story...'"
             :rows="1"
             autoresize
             class="flex-1"
+            @focus="captureSelection"
             @keydown.enter.exact.prevent="sendMessage"
           />
           <UButton
@@ -195,6 +259,13 @@ defineExpose({ executeCommand })
             :disabled="!chatInput.trim() || isStreaming"
             @click="sendMessage"
           />
+        </div>
+        <!-- Selection indicator -->
+        <div
+          v-if="capturedSelection"
+          class="mt-1.5 text-xs text-(--ui-text-muted) truncate"
+        >
+          Selected: "{{ capturedSelection.text.slice(0, 80) }}{{ capturedSelection.text.length > 80 ? '...' : '' }}"
         </div>
       </div>
     </template>

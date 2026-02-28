@@ -112,6 +112,15 @@ function handleInsertFromAgent(text: string) {
   editorRef.value?.insertAtCursor(text)
 }
 
+// Handle AI text replacement using stored selection range
+function handleReplaceFromAgent(text: string, from: number, to: number) {
+  if (from >= 0 && to >= 0) {
+    editorRef.value?.replaceRange(from, to, text)
+  } else {
+    editorRef.value?.replaceSelection(text)
+  }
+}
+
 // Draft recovery — proxy from editor ref
 const hasDraftRecovery = computed(() => editorRef.value?.hasDraftRecovery?.value ?? false)
 function recoverDraft() { editorRef.value?.recoverDraft() }
@@ -174,7 +183,9 @@ onBeforeUnmount(() => {
       ref="agentPanelRef"
       :book-id="projectId"
       :chapter-id="chapterId"
+      :get-editor-snapshot="() => editorRef?.getSelectionSnapshot() ?? null"
       @insert="handleInsertFromAgent"
+      @replace="handleReplaceFromAgent"
     />
   </div>
 </template>

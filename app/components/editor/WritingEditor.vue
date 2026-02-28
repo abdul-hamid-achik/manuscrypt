@@ -16,9 +16,11 @@ const {
   saveStatus,
   loadContent,
   getSelectedText,
+  getSelectionSnapshot,
   getTrailingText,
   insertAtCursor,
   replaceSelection,
+  replaceRange,
   hasDraftRecovery,
   recoverDraft,
   dismissRecovery,
@@ -30,9 +32,11 @@ onMounted(() => {
 
 defineExpose({
   getSelectedText,
+  getSelectionSnapshot,
   getTrailingText,
   insertAtCursor,
   replaceSelection,
+  replaceRange,
   wordCount,
   characterCount,
   saveStatus,

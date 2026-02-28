@@ -1,25 +1,26 @@
 import { db } from "../../database"
 import { books } from "../../database/schema"
 import { eq } from "drizzle-orm"
+import { updateBookSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
   const body = await readBody(event)
+  const data = parseBody(updateBookSchema, body)
 
   const existing = db.select().from(books).where(eq(books.id, id!)).get()
   if (!existing) {
     throw createError({ statusCode: 404, message: "Book not found" })
   }
 
-  const { title, genre, premise, targetWordCount, status, styleGuide } = body
   db.update(books)
     .set({
-      ...(title !== undefined && { title }),
-      ...(genre !== undefined && { genre }),
-      ...(premise !== undefined && { premise }),
-      ...(targetWordCount !== undefined && { targetWordCount }),
-      ...(status !== undefined && { status }),
-      ...(styleGuide !== undefined && { styleGuide }),
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.genre !== undefined && { genre: data.genre }),
+      ...(data.premise !== undefined && { premise: data.premise }),
+      ...(data.targetWordCount !== undefined && { targetWordCount: data.targetWordCount }),
+      ...(data.status !== undefined && { status: data.status }),
+      ...(data.styleGuide !== undefined && { styleGuide: data.styleGuide }),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(books.id, id!))

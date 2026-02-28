@@ -43,10 +43,11 @@ export function streamAnthropicResponse(
 
       await eventStream.push(JSON.stringify({ type: "done" }))
     } catch (error) {
+      console.error("[AI Stream Error]", error instanceof Error ? error.message : error)
       await eventStream.push(
         JSON.stringify({
           type: "error",
-          content: error instanceof Error ? error.message : "Stream failed",
+          content: "An error occurred while generating the response. Please try again.",
         }),
       )
     } finally {
@@ -82,9 +83,10 @@ export async function callAnthropicJson<T>(
     if (error instanceof SyntaxError) {
       throw createError({ statusCode: 500, message: `Failed to parse ${opts.errorLabel ?? "AI"} response` })
     }
+    console.error(`[AI ${opts.errorLabel ?? "request"} Error]`, error instanceof Error ? error.message : error)
     throw createError({
       statusCode: 500,
-      message: error instanceof Error ? error.message : `${opts.errorLabel ?? "AI request"} failed`,
+      message: `${opts.errorLabel ?? "AI request"} failed. Please try again.`,
     })
   }
 }

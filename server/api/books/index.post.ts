@@ -2,13 +2,11 @@ import { db } from "../../database"
 import { books } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createBookSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.title) {
-    throw createError({ statusCode: 400, message: "Title is required" })
-  }
+  const data = parseBody(createBookSchema, body)
 
   const id = nanoid()
   const now = new Date().toISOString()
@@ -16,12 +14,12 @@ export default defineEventHandler(async (event) => {
   db.insert(books)
     .values({
       id,
-      title: body.title,
-      genre: body.genre ?? null,
-      premise: body.premise ?? null,
-      targetWordCount: body.targetWordCount ?? 80000,
+      title: data.title,
+      genre: data.genre ?? null,
+      premise: data.premise ?? null,
+      targetWordCount: data.targetWordCount ?? 80000,
       status: "planning",
-      styleGuide: body.styleGuide ?? null,
+      styleGuide: data.styleGuide ?? null,
       createdAt: now,
       updatedAt: now,
     })

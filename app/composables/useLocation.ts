@@ -5,8 +5,8 @@ const { useList, useOne, create, update, remove } = createResourceComposable<Cre
   { parentQueryParam: 'bookId' },
 )
 
-export const useLocations = (bookId: MaybeRef<string>) => useList(bookId)
-export const useLocation = (id: MaybeRef<string>) => useOne(id)
-export const createLocation = (data: CreateLocationInput) => create(data)
-export const updateLocation = (id: string, data: UpdateLocationInput) => update(id, data)
-export const deleteLocation = (id: string) => remove(id)
+export function useLocations(bookId: MaybeRef<string>) { return useList(bookId) }
+export function useLocation(id: MaybeRef<string>) { return useOne(id) }
+export function createLocation(input: CreateLocationInput) { return create(input) }
+export function updateLocation(id: string, input: UpdateLocationInput) { return update(id, input) }
+export function deleteLocation(id: string) { return remove(id) }

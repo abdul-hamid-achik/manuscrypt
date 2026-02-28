@@ -5,7 +5,7 @@ const { useList, create, update, remove } = createResourceComposable<CreateChara
   { parentQueryParam: 'bookId' },
 )
 
-export const useRelationships = (bookId: MaybeRef<string>) => useList(bookId)
-export const createRelationship = (data: CreateCharacterRelationshipInput) => create(data)
-export const updateRelationship = (id: string, data: UpdateCharacterRelationshipInput) => update(id, data)
-export const deleteRelationship = (id: string) => remove(id)
+export function useRelationships(bookId: MaybeRef<string>) { return useList(bookId) }
+export function createRelationship(input: CreateCharacterRelationshipInput) { return create(input) }
+export function updateRelationship(id: string, input: UpdateCharacterRelationshipInput) { return update(id, input) }
+export function deleteRelationship(id: string) { return remove(id) }

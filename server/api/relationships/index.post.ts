@@ -2,27 +2,22 @@ import { db } from "../../database"
 import { characterRelationships } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createRelationshipSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.bookId || !body.fromCharacterId || !body.toCharacterId || !body.relationshipType) {
-    throw createError({
-      statusCode: 400,
-      message: "bookId, fromCharacterId, toCharacterId, and relationshipType are required",
-    })
-  }
+  const data = parseBody(createRelationshipSchema, body)
 
   const id = nanoid()
 
   db.insert(characterRelationships)
     .values({
       id,
-      bookId: body.bookId,
-      fromCharacterId: body.fromCharacterId,
-      toCharacterId: body.toCharacterId,
-      relationshipType: body.relationshipType,
-      description: body.description ?? null,
+      bookId: data.bookId,
+      fromCharacterId: data.fromCharacterId,
+      toCharacterId: data.toCharacterId,
+      relationshipType: data.relationshipType,
+      description: data.description ?? null,
     })
     .run()
 

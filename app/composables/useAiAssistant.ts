@@ -29,14 +29,24 @@ export function useAiAssistant(
   const error = computed(() => session.value.error)
   const historyLoaded = computed(() => session.value.historyLoaded)
 
-  async function saveMessage(msg: { role: string; content: string; characterId?: string; command?: string }) {
+  async function saveMessage(
+    msg: { role: string; content: string; characterId?: string; command?: string },
+    context?: { chapterId?: string },
+  ) {
     try {
       await $fetch("/api/ai/messages", {
         method: "POST",
-        body: { bookId, ...msg },
+        body: {
+          bookId,
+          role: msg.role,
+          content: msg.content,
+          characterId: msg.characterId,
+          chapterId: context?.chapterId,
+          command: msg.command,
+        },
       })
-    } catch {
-      // Don't block chat on save failure
+    } catch (e) {
+      console.warn("[Manuscrypt] Failed to save AI message:", e instanceof Error ? e.message : e)
     }
   }
 
@@ -82,6 +92,18 @@ export function useAiAssistant(
     s.messages.push(userMsg)
 
     try {
+      // Build API messages, enriching the last user message with selected text for context
+      const apiMessages = s.messages.map((m, i) => {
+        const isLast = i === s.messages.length - 1
+        if (isLast && m.role === "user" && context.selectedText && !command) {
+          return {
+            role: m.role,
+            content: `[Selected text: "${context.selectedText}"]\n\n${m.content}`,
+          }
+        }
+        return { role: m.role, content: m.content }
+      })
+
       const response = await $fetch<ReadableStream>("/api/ai/stream", {
         method: "POST",
         body: {
@@ -89,10 +111,7 @@ export function useAiAssistant(
           chapterId: context.chapterId,
           command,
           selectedText: context.selectedText,
-          messages: s.messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: apiMessages,
         },
         responseType: "stream",
       })
@@ -116,8 +135,8 @@ export function useAiAssistant(
           timestamp: new Date(),
         })
 
-        saveMessage({ role: "user", content: userMessage, command })
-        saveMessage({ role: "assistant", content: fullText, command })
+        saveMessage({ role: "user", content: userMessage, command }, context)
+        saveMessage({ role: "assistant", content: fullText, command }, context)
       }
     } catch (e) {
       s.error = e instanceof Error ? e.message : "Failed to connect to AI"

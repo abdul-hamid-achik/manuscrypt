@@ -74,6 +74,6 @@ describe("AI Style Analysis", () => {
         messages: [{ role: "user", content: "Test" }],
         errorLabel: "style analysis",
       }),
-    ).rejects.toThrow("API rate limit")
+    ).rejects.toThrow("style analysis failed. Please try again.")
   })
 })

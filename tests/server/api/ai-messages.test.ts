@@ -36,8 +36,6 @@ describe("POST /api/ai/messages", () => {
       bookId: BOOK_ID,
       role: "user",
       content: "Hello AI",
-      sessionType: "chat",
-      sessionId: "sess-1",
     }
     vi.mocked(readBody).mockResolvedValue(body)
 
@@ -53,14 +51,13 @@ describe("POST /api/ai/messages", () => {
     expect(all[0].bookId).toBe(BOOK_ID)
   })
 
-  it("creates a message with optional characterId", async () => {
+  it("creates a message with optional characterId and command", async () => {
     const body = {
       bookId: BOOK_ID,
       role: "assistant",
       content: "Response from AI",
-      sessionType: "interview",
-      sessionId: "sess-2",
       characterId: "char-1",
+      command: "continue",
     }
     vi.mocked(readBody).mockResolvedValue(body)
 
@@ -70,12 +67,13 @@ describe("POST /api/ai/messages", () => {
     const all = db.select().from(aiMessages).all()
     expect(all).toHaveLength(1)
     expect(all[0].characterId).toBe("char-1")
+    expect(all[0].command).toBe("continue")
   })
 
   it("rejects invalid input (missing required fields)", async () => {
     vi.mocked(readBody).mockResolvedValue({
       bookId: BOOK_ID,
-      // missing role, content, sessionType, sessionId
+      // missing role, content
     })
 
     await expect(postHandler({} as any)).rejects.toThrow()
@@ -86,8 +84,6 @@ describe("POST /api/ai/messages", () => {
       bookId: BOOK_ID,
       role: "user",
       content: "",
-      sessionType: "chat",
-      sessionId: "sess-1",
     })
 
     await expect(postHandler({} as any)).rejects.toThrow()
@@ -98,8 +94,6 @@ describe("POST /api/ai/messages", () => {
       bookId: BOOK_ID,
       role: "system",
       content: "Hello",
-      sessionType: "chat",
-      sessionId: "sess-1",
     })
 
     await expect(postHandler({} as any)).rejects.toThrow()

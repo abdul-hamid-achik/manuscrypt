@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "bookId query param is required" })
   }
 
-  const limit = parseInt(query.limit as string) || 20
+  const limit = Math.min(parseInt(query.limit as string) || 20, 100)
 
   return db
     .select()

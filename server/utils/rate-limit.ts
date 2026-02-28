@@ -19,11 +19,10 @@ export function checkRateLimit(
   event: H3Event,
   { maxRequests = 20, windowMs = 60_000 } = {},
 ) {
-  const ip =
-    getRequestHeader(event, "x-forwarded-for")?.split(",")[0]?.trim() ||
-    getRequestHeader(event, "x-real-ip") ||
-    event.node.req.socket.remoteAddress ||
-    "unknown"
+  // Only trust socket address directly — X-Forwarded-For is trivially spoofable
+  // without a trusted reverse proxy. If behind a proxy, configure the proxy
+  // to set a trusted header and validate it here.
+  const ip = event.node.req.socket.remoteAddress || "unknown"
 
   const now = Date.now()
   const timestamps = requestLog.get(ip) ?? []

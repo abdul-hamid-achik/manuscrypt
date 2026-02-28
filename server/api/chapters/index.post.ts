@@ -2,13 +2,11 @@ import { db } from "../../database"
 import { chapters } from "../../database/schema"
 import { eq, max } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createChapterSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.bookId) {
-    throw createError({ statusCode: 400, message: "bookId is required" })
-  }
+  const data = parseBody(createChapterSchema, body)
 
   const id = nanoid()
   const now = new Date().toISOString()
@@ -17,25 +15,25 @@ export default defineEventHandler(async (event) => {
   const maxOrder = db
     .select({ max: max(chapters.sortOrder) })
     .from(chapters)
-    .where(eq(chapters.bookId, body.bookId))
+    .where(eq(chapters.bookId, data.bookId))
     .get()
 
-  const sortOrder = (maxOrder?.max ?? -1) + 1
+  const sortOrder = data.sortOrder ?? (maxOrder?.max ?? -1) + 1
 
   // Auto-assign chapter number if not provided
-  const number = body.number ?? sortOrder + 1
+  const number = data.number ?? sortOrder + 1
 
   db.insert(chapters)
     .values({
       id,
-      bookId: body.bookId,
+      bookId: data.bookId,
       number,
-      title: body.title ?? `Chapter ${number}`,
-      synopsis: body.synopsis ?? null,
-      content: body.content ?? null,
+      title: data.title ?? `Chapter ${number}`,
+      synopsis: data.synopsis ?? null,
+      content: data.content ?? null,
       wordCount: 0,
       status: "planned",
-      act: body.act ?? null,
+      act: data.act ?? null,
       sortOrder,
       createdAt: now,
       updatedAt: now,

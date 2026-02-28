@@ -83,17 +83,17 @@ export function useScenes(chapterId: MaybeRef<string>) {
   })
 }
 
-export async function createScene(data: CreateSceneInput) {
+export async function createScene(input: CreateSceneInput) {
   return $fetch<Scene>('/api/scenes', {
     method: 'POST',
-    body: data,
+    body: input,
   })
 }
 
-export async function updateScene(id: string, data: UpdateSceneInput) {
+export async function updateScene(id: string, input: UpdateSceneInput) {
   return $fetch<Scene>(`/api/scenes/${id}`, {
     method: 'PUT',
-    body: data,
+    body: input,
   })
 }
 

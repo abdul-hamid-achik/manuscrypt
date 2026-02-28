@@ -2,16 +2,11 @@ import { db } from "../../database"
 import { scenes } from "../../database/schema"
 import { eq, max } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { createSceneSchema, parseBody } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-
-  if (!body.chapterId) {
-    throw createError({ statusCode: 400, message: "chapterId is required" })
-  }
-  if (!body.title) {
-    throw createError({ statusCode: 400, message: "title is required" })
-  }
+  const data = parseBody(createSceneSchema, body)
 
   const id = nanoid()
   const now = new Date().toISOString()
@@ -19,22 +14,22 @@ export default defineEventHandler(async (event) => {
   const maxOrder = db
     .select({ max: max(scenes.sortOrder) })
     .from(scenes)
-    .where(eq(scenes.chapterId, body.chapterId))
+    .where(eq(scenes.chapterId, data.chapterId))
     .get()
 
-  const sortOrder = body.sortOrder ?? (maxOrder?.max ?? -1) + 1
+  const sortOrder = data.sortOrder ?? (maxOrder?.max ?? -1) + 1
 
   db.insert(scenes)
     .values({
       id,
-      chapterId: body.chapterId,
-      title: body.title,
-      synopsis: body.synopsis ?? null,
-      povCharacterId: body.povCharacterId ?? null,
-      locationId: body.locationId ?? null,
-      moodStart: body.moodStart ?? null,
-      moodEnd: body.moodEnd ?? null,
-      targetWordCount: body.targetWordCount ?? null,
+      chapterId: data.chapterId,
+      title: data.title,
+      synopsis: data.synopsis ?? null,
+      povCharacterId: data.povCharacterId ?? null,
+      locationId: data.locationId ?? null,
+      moodStart: data.moodStart ?? null,
+      moodEnd: data.moodEnd ?? null,
+      targetWordCount: data.targetWordCount ?? null,
       status: "planned",
       sortOrder,
       createdAt: now,

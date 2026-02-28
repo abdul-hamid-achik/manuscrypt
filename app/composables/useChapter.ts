@@ -5,11 +5,11 @@ const { useList, useOne, create, update, remove } = createResourceComposable<Cre
   { parentQueryParam: 'bookId' },
 )
 
-export const useChapters = (bookId: MaybeRef<string>) => useList(bookId)
-export const useChapter = (id: MaybeRef<string>) => useOne(id)
-export const createChapter = (data: CreateChapterInput) => create(data)
-export const updateChapter = (id: string, data: UpdateChapterInput) => update(id, data)
-export const deleteChapter = (id: string) => remove(id)
+export function useChapters(bookId: MaybeRef<string>) { return useList(bookId) }
+export function useChapter(id: MaybeRef<string>) { return useOne(id) }
+export function createChapter(input: CreateChapterInput) { return create(input) }
+export function updateChapter(id: string, input: UpdateChapterInput) { return update(id, input) }
+export function deleteChapter(id: string) { return remove(id) }
 
 export async function reorderChapter(id: string, newOrder: number) {
   return $fetch(`/api/chapters/${id}/reorder`, {

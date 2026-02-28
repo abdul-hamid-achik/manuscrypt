@@ -4,13 +4,12 @@ import { aiMessages } from "../../../database/schema"
 import { nanoid } from "nanoid"
 
 const bodySchema = z.object({
-  bookId: z.string(),
+  bookId: z.string().min(1),
   role: z.enum(["user", "assistant"]),
-  content: z.string().min(1, "content must not be empty"),
-  sessionType: z.string(),
-  sessionId: z.string(),
+  content: z.string().min(1, "content must not be empty").max(100_000),
   chapterId: z.string().optional(),
   characterId: z.string().optional(),
+  command: z.string().max(100).optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -23,7 +22,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { bookId, role, content, characterId } = parsed.data
+  const { bookId, role, content, characterId, chapterId, command } = parsed.data
 
   const id = nanoid()
 
@@ -33,8 +32,9 @@ export default defineEventHandler(async (event) => {
       bookId,
       role,
       content,
+      chapterId: chapterId ?? null,
       characterId: characterId ?? null,
-      command: body.command ?? null,
+      command: command ?? null,
     })
     .run()
 

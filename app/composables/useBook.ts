@@ -2,8 +2,8 @@ import type { Book, CreateBookInput, UpdateBookInput } from '~~/shared/types'
 
 const { useList, useOne, create, update, remove } = createResourceComposable<CreateBookInput, UpdateBookInput, Book>('/api/books')
 
-export const useBooks = () => useList()
-export const useBook = (id: MaybeRef<string>) => useOne(id)
-export const createBook = (data: CreateBookInput) => create(data)
-export const updateBook = (id: string, data: UpdateBookInput) => update(id, data)
-export const deleteBook = (id: string) => remove(id)
+export function useBooks() { return useList() }
+export function useBook(id: MaybeRef<string>) { return useOne(id) }
+export function createBook(input: CreateBookInput) { return create(input) }
+export function updateBook(id: string, input: UpdateBookInput) { return update(id, input) }
+export function deleteBook(id: string) { return remove(id) }
