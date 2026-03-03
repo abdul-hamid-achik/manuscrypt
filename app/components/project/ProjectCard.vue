@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { timeAgo } from '~/utils/format-date'
+
 const props = defineProps<{
   book: {
     id: string
@@ -7,6 +9,8 @@ const props = defineProps<{
     status: string | null
     targetWordCount: number | null
     wordCount?: number
+    chapterCount?: number
+    updatedAt?: string | null
   }
 }>()
 
@@ -18,6 +22,23 @@ const statusColor = computed(() => {
     complete: 'success',
   }
   return colors[props.book.status ?? 'planning'] || 'neutral'
+})
+
+const chapterLabel = computed(() => {
+  const count = props.book.chapterCount ?? 0
+  if (count === 0) return 'No chapters yet'
+  return `${count} chapter${count === 1 ? '' : 's'}`
+})
+
+const wordCountLabel = computed(() => {
+  const wc = props.book.wordCount ?? 0
+  if (wc === 0) return null
+  return `${wc.toLocaleString()} words`
+})
+
+const updatedLabel = computed(() => {
+  if (!props.book.updatedAt) return null
+  return `Updated ${timeAgo(props.book.updatedAt)}`
 })
 </script>
 
@@ -46,6 +67,12 @@ const statusColor = computed(() => {
           :current="book.wordCount ?? 0"
           :target="book.targetWordCount ?? 0"
         />
+
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--ui-text-muted)">
+          <span>{{ chapterLabel }}</span>
+          <span v-if="wordCountLabel">{{ wordCountLabel }}</span>
+          <span v-if="updatedLabel">{{ updatedLabel }}</span>
+        </div>
       </div>
     </UCard>
   </NuxtLink>

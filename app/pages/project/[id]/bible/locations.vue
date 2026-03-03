@@ -35,14 +35,24 @@ function onCancelled() {
 
 const toast = useToast()
 
-async function handleDeleteLocation(id: string) {
-  const confirmed = window.confirm('Delete this location? This cannot be undone.')
-  if (!confirmed) return
+const showDeleteModal = ref(false)
+const pendingDeleteId = ref<string | null>(null)
+
+function handleDeleteLocation(id: string) {
+  pendingDeleteId.value = id
+  showDeleteModal.value = true
+}
+
+async function confirmDeleteLocation() {
+  if (!pendingDeleteId.value) return
   try {
-    await $fetch(`/api/locations/${id}` as string, { method: 'DELETE' })
+    await $fetch(`/api/locations/${pendingDeleteId.value}` as string, { method: 'DELETE' })
     await refresh()
   } catch (e) {
     toast.add({ title: 'Error', description: e instanceof Error ? e.message : 'Could not delete location', color: 'error' })
+  } finally {
+    showDeleteModal.value = false
+    pendingDeleteId.value = null
   }
 }
 </script>
@@ -90,7 +100,7 @@ async function handleDeleteLocation(id: string) {
         :key="loc.id"
         class="relative group"
       >
-        <div @click="openEdit(loc)" class="cursor-pointer">
+        <div class="cursor-pointer" @click="openEdit(loc)">
           <LocationCard :location="loc" />
         </div>
         <UButton
@@ -123,6 +133,24 @@ async function handleDeleteLocation(id: string) {
         @click="openCreate"
       />
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <UModal v-model:open="showDeleteModal">
+      <template #header>
+        <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">Delete Location</h3>
+      </template>
+      <template #body>
+        <p class="text-sm text-(--ui-text-muted)">
+          Are you sure you want to delete this location? This cannot be undone.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton label="Cancel" variant="ghost" @click="showDeleteModal = false" />
+          <UButton label="Delete" color="error" @click="confirmDeleteLocation" />
+        </div>
+      </template>
+    </UModal>
 
     <!-- Create / Edit Slideover -->
     <USlideover

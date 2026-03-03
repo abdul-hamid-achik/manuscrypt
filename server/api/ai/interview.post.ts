@@ -1,21 +1,9 @@
-import { z } from "zod"
 import { db } from "../../database"
 import { characters } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { createAnthropicClient, streamAnthropicResponse } from "../../utils/ai-stream"
 import { checkRateLimit } from "../../utils/rate-limit"
-
-const bodySchema = z.object({
-  bookId: z.string(),
-  characterId: z.string(),
-  message: z.string().min(1, "message must not be empty"),
-  history: z.array(
-    z.object({
-      role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    }),
-  ),
-})
+import { aiInterviewSchema as bodySchema } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   checkRateLimit(event, { maxRequests: 20, windowMs: 60_000 })

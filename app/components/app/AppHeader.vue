@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
+const writingBookTitle = useState<string>('writingBookTitle', () => '')
+const sidebarOpen = useState<boolean>('sidebarOpen', () => false)
 
 const projectId = computed(() => {
   const id = route.params.id as string | undefined
@@ -17,7 +19,7 @@ const breadcrumbItems = computed(() => {
   } else if (segments[0] === 'project' && segments[1]) {
     items.push({ label: 'Library', to: '/projects' })
     // Project name will be resolved by the page; show generic label
-    items.push({ label: route.meta.projectTitle as string || 'Project' })
+    items.push({ label: writingBookTitle.value || route.meta.projectTitle as string || 'Project' })
     if (segments[2]) {
       const section = segments[2].charAt(0).toUpperCase() + segments[2].slice(1)
       items.push({ label: section })
@@ -49,7 +51,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <header class="flex h-14 items-center justify-between border-b border-(--ui-border) px-4 lg:px-6">
-    <UBreadcrumb :items="breadcrumbItems" />
+    <div class="flex items-center gap-2">
+      <UButton
+        class="lg:hidden"
+        variant="ghost"
+        color="neutral"
+        icon="i-lucide-menu"
+        size="sm"
+        @click="sidebarOpen = !sidebarOpen"
+      />
+      <UBreadcrumb :items="breadcrumbItems" />
+    </div>
 
     <div class="flex items-center gap-2">
       <UButton

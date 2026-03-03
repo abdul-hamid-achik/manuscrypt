@@ -1,6 +1,7 @@
 import { db } from "../../database"
 import { books, chapters } from "../../database/schema"
 import { eq, asc } from "drizzle-orm"
+import { parseBody, exportSchema } from "../../utils/validation"
 import {
   Document,
   Packer,
@@ -8,11 +9,8 @@ import {
   TextRun,
   HeadingLevel,
   AlignmentType,
-  PageBreak,
   SectionType,
   convertInchesToTwip,
-  TabStopPosition,
-  TabStopType,
 } from "docx"
 import type { TipTapNode } from "~~/shared/types"
 
@@ -74,11 +72,10 @@ function convertNodes(node: TipTapNode): Paragraph[] {
   }
 
   if (node.type === "blockquote") {
-    const innerParagraphs = (node.content ?? []).flatMap(convertNodes)
-    return innerParagraphs.map(
-      (_p, i) => {
-        const runs = extractRuns((node.content ?? [])[i]?.content ?? [])
-        return new Paragraph({
+    return (node.content ?? []).flatMap((child) => {
+      const runs = extractRuns(child.content ?? [])
+      return [
+        new Paragraph({
           children: runs,
           spacing: { line: 480 },
           indent: {
@@ -86,9 +83,9 @@ function convertNodes(node: TipTapNode): Paragraph[] {
             right: convertInchesToTwip(0.5),
           },
           style: "IntenseQuote",
-        })
-      }
-    )
+        }),
+      ]
+    })
   }
 
   if (node.type === "horizontalRule") {
@@ -139,12 +136,9 @@ function extractRuns(nodes: TipTapNode[]): TextRun[] {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
+  const { bookId } = parseBody(exportSchema, body)
 
-  if (!body.bookId) {
-    throw createError({ statusCode: 400, message: "bookId is required" })
-  }
-
-  const book = db.select().from(books).where(eq(books.id, body.bookId)).get()
+  const book = db.select().from(books).where(eq(books.id, bookId)).get()
   if (!book) {
     throw createError({ statusCode: 404, message: "Book not found" })
   }
@@ -152,7 +146,7 @@ export default defineEventHandler(async (event) => {
   const allChapters = db
     .select()
     .from(chapters)
-    .where(eq(chapters.bookId, body.bookId))
+    .where(eq(chapters.bookId, bookId))
     .orderBy(asc(chapters.sortOrder))
     .all()
 
@@ -294,7 +288,7 @@ export default defineEventHandler(async (event) => {
   })
 
   const buffer = await Packer.toBuffer(doc)
-  const filename = `${book.title.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.docx`
+  const filename = `${book.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.docx`
 
   setResponseHeaders(event, {
     "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

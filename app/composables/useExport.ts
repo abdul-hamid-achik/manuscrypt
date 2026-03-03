@@ -53,7 +53,7 @@ export function useExport(bookId: MaybeRef<string>) {
       const a = document.createElement('a')
       a.href = url
       const filename = bookTitle
-        ? `${bookTitle.replace(/[^a-zA-Z0-9]+/g, '-')}.docx`
+        ? `${bookTitle.replace(/[^a-z0-9]+/gi, '-')}.docx`
         : 'manuscript.docx'
       a.download = filename
       a.click()
@@ -76,7 +76,7 @@ export function stripMarkdown(md: string): string {
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/^\s*\d+\.\s+/gm, '')
     .replace(/^\s*>\s+/gm, '')
-    .replace(/^---+$/gm, '')
+    .replace(/^-{3,}$/gm, '')
     .replace(/\[(.+?)\]\(.+?\)/g, '$1')
     .replace(/!\[.*?\]\(.+?\)/g, '')
     .replace(/\n{3,}/g, '\n\n')

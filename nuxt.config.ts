@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: "2026-02-28",
 
-  modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxt/test-utils/module"],
+  modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxt/test-utils/module", "@nuxt/eslint"],
 
   components: [
     { path: "~/components", pathPrefix: false },
@@ -31,6 +31,17 @@ export default defineNuxtConfig({
           "X-Frame-Options": "DENY",
           "Referrer-Policy": "strict-origin-when-cross-origin",
           "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+          "Content-Security-Policy": [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+            "font-src 'self'",
+            "object-src 'none'",
+            "base-uri 'self'",
+          ].join("; "),
         },
       },
     },

@@ -29,6 +29,7 @@ export interface Chapter {
   synopsis: string | null
   content: string | null
   wordCount: number | null
+  targetWordCount: number | null
   status: string | null
   act: number | null
   sortOrder: number
@@ -99,6 +100,15 @@ export interface AiMessage {
   createdAt: string | null
 }
 
+export interface ContentSnapshot {
+  id: number
+  chapterId: string
+  content: string
+  wordCount: number
+  label: string | null
+  createdAt: string
+}
+
 export interface WritingSession {
   id: string
   bookId: string
@@ -138,6 +148,7 @@ export interface CreateChapterInput {
   number: number
   title: string
   synopsis?: string
+  targetWordCount?: number
   act?: number
   sortOrder: number
 }
@@ -147,6 +158,7 @@ export interface UpdateChapterInput {
   synopsis?: string
   content?: string
   wordCount?: number
+  targetWordCount?: number
   status?: string
   act?: number
   sortOrder?: number

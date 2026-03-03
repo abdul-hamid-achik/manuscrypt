@@ -29,6 +29,7 @@ export const createChapterSchema = z.object({
   title: z.string().max(500).optional(),
   synopsis: z.string().max(10_000).optional(),
   content: z.string().max(5_000_000).optional(),
+  targetWordCount: z.number().int().min(0).max(1_000_000).optional(),
   act: z.number().int().min(1).max(5).optional(),
   sortOrder: z.number().int().min(0).optional(),
 })
@@ -38,6 +39,7 @@ export const updateChapterSchema = z.object({
   synopsis: z.string().max(10_000).nullable().optional(),
   content: z.string().max(5_000_000).nullable().optional(),
   wordCount: z.number().int().min(0).optional(),
+  targetWordCount: z.number().int().min(0).max(1_000_000).nullable().optional(),
   status: z.enum(CHAPTER_STATUSES).optional(),
   act: z.number().int().min(1).max(5).nullable().optional(),
   sortOrder: z.number().int().min(0).optional(),
@@ -121,7 +123,10 @@ export const createRelationshipSchema = z.object({
   toCharacterId: z.string().min(1, "toCharacterId is required"),
   relationshipType: z.string().min(1, "relationshipType is required").max(200),
   description: z.string().max(5_000).optional(),
-})
+}).refine(
+  (data) => data.fromCharacterId !== data.toCharacterId,
+  { message: "A character cannot have a relationship with itself", path: ["toCharacterId"] },
+)
 
 export const updateRelationshipSchema = z.object({
   relationshipType: z.string().min(1).max(200).optional(),
@@ -135,6 +140,81 @@ export const createWritingSessionSchema = z.object({
   wordsWritten: z.number().int().min(0).optional(),
   duration: z.number().int().min(0).optional(),
   startedAt: z.string().optional(),
+  endedAt: z.string().optional(),
+})
+
+// ── Content Snapshots ──
+export const createSnapshotSchema = z.object({
+  chapterId: z.string().min(1, "chapterId is required"),
+  content: z.string().min(1, "content is required").max(5_000_000),
+  wordCount: z.number().int().min(0).default(0),
+  label: z.string().max(500).optional(),
+})
+
+// ── AI Endpoints ──
+export const aiStreamSchema = z.object({
+  bookId: z.string(),
+  chapterId: z.string().optional(),
+  messages: z.array(
+    z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string(),
+    }),
+  ),
+  command: z.string().optional(),
+  selectedText: z.string().optional(),
+  agentMode: z.boolean().optional(),
+})
+
+export const aiReviewSchema = z.object({
+  chapterId: z.string(),
+})
+
+export const aiInterviewSchema = z.object({
+  bookId: z.string(),
+  characterId: z.string(),
+  message: z.string().min(1, "message must not be empty"),
+  history: z.array(
+    z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string(),
+    }),
+  ),
+})
+
+export const aiStyleAnalyzeSchema = z.object({
+  text: z.string().min(100, "Please provide at least 100 characters of text to analyze").max(50000, "Text must not exceed 50,000 characters"),
+  bookId: z.string().optional(),
+})
+
+export const aiMessageSchema = z.object({
+  bookId: z.string().min(1),
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1, "content must not be empty").max(100_000),
+  chapterId: z.string().optional(),
+  characterId: z.string().optional(),
+  command: z.string().max(100).optional(),
+})
+
+// ── AI Outline Generation ──
+export const generateOutlineSchema = z.object({
+  bookId: z.string().min(1, "bookId is required"),
+})
+
+// ── Export ──
+export const exportSchema = z.object({
+  bookId: z.string().min(1, "bookId is required"),
+})
+
+// ── Reorder ──
+export const reorderSchema = z.object({
+  newOrder: z.number().int().min(0, "newOrder must be >= 0"),
+})
+
+// ── Writing Session Update ──
+export const updateWritingSessionSchema = z.object({
+  wordsWritten: z.number().int().min(0).optional(),
+  duration: z.number().int().min(0).optional(),
   endedAt: z.string().optional(),
 })
 

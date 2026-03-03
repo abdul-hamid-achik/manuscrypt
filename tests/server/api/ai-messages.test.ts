@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createTestDb } from "../../setup/test-db"
 import { nanoid } from "nanoid"
 
+import { books, characters, aiMessages } from "../../../server/database/schema"
+
 const { db, sqlite } = createTestDb()
 
 vi.mock("../../../server/database", () => ({ db }))
 
 // Stub Nuxt auto-imports
-vi.stubGlobal("defineEventHandler", (handler: Function) => handler)
+vi.stubGlobal("defineEventHandler", (handler: (...args: unknown[]) => unknown) => handler)
 vi.stubGlobal("readBody", vi.fn())
 vi.stubGlobal("getQuery", vi.fn())
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
@@ -20,14 +22,15 @@ const postHandler = (await import("../../../server/api/ai/messages/index.post"))
 const getHandler = (await import("../../../server/api/ai/messages/index.get")).default
 const deleteHandler = (await import("../../../server/api/ai/messages/index.delete")).default
 
-import { books, aiMessages } from "../../../server/database/schema"
-
 const BOOK_ID = "test-book-1"
+const CHAR_ID = "char-1"
 
 beforeEach(() => {
   sqlite.exec("DELETE FROM ai_messages")
+  sqlite.exec("DELETE FROM characters")
   sqlite.exec("DELETE FROM books")
   db.insert(books).values({ id: BOOK_ID, title: "Test Book" }).run()
+  db.insert(characters).values({ id: CHAR_ID, bookId: BOOK_ID, name: "Test Character" }).run()
 })
 
 describe("POST /api/ai/messages", () => {

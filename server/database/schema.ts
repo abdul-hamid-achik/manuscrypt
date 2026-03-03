@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core"
+import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
 
 export const books = sqliteTable("books", {
@@ -23,6 +23,7 @@ export const chapters = sqliteTable("chapters", {
   synopsis: text("synopsis"),
   content: text("content"),
   wordCount: integer("word_count").default(0),
+  targetWordCount: integer("target_word_count"),
   status: text("status").default("planned"),
   act: integer("act"),
   sortOrder: integer("sort_order").notNull(),
@@ -92,6 +93,7 @@ export const characterRelationships = sqliteTable("character_relationships", {
   index("idx_relationships_book_id").on(table.bookId),
   index("idx_relationships_from").on(table.fromCharacterId),
   index("idx_relationships_to").on(table.toCharacterId),
+  uniqueIndex("idx_relationships_unique").on(table.fromCharacterId, table.toCharacterId, table.bookId),
 ])
 
 export const locations = sqliteTable("locations", {
@@ -113,8 +115,8 @@ export const aiMessages = sqliteTable("ai_messages", {
   bookId: text("book_id")
     .notNull()
     .references(() => books.id, { onDelete: "cascade" }),
-  chapterId: text("chapter_id"),
-  characterId: text("character_id"),
+  chapterId: text("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+  characterId: text("character_id").references(() => characters.id, { onDelete: "set null" }),
   role: text("role").notNull(),
   content: text("content").notNull(),
   command: text("command"),
@@ -122,6 +124,20 @@ export const aiMessages = sqliteTable("ai_messages", {
 }, (table) => [
   index("idx_ai_messages_book_id").on(table.bookId),
   index("idx_ai_messages_book_character").on(table.bookId, table.characterId),
+])
+
+export const contentSnapshots = sqliteTable("content_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  chapterId: text("chapter_id")
+    .notNull()
+    .references(() => chapters.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  wordCount: integer("word_count").notNull().default(0),
+  label: text("label"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_snapshots_chapter").on(table.chapterId),
+  index("idx_snapshots_chapter_date").on(table.chapterId, table.createdAt),
 ])
 
 export const writingSessions = sqliteTable("writing_sessions", {

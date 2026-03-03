@@ -1,6 +1,6 @@
 import { db } from "../../database"
 import { chapters } from "../../database/schema"
-import { eq, and } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { tiptapJsonToText } from "../../utils/tiptap"
 
 export default defineEventHandler(async (event) => {

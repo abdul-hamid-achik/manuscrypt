@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createTestDb } from "../../setup/test-db"
 import { nanoid } from "nanoid"
 
+import { books, characters, characterRelationships } from "../../../server/database/schema"
+import { eq } from "drizzle-orm"
+
 const { db, sqlite } = createTestDb()
 
 vi.mock("../../../server/database", () => ({ db }))
-
-import { books, characters, characterRelationships } from "../../../server/database/schema"
-import { eq } from "drizzle-orm"
 
 let bookId: string
 let char1Id: string

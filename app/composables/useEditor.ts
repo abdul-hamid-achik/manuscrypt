@@ -3,6 +3,7 @@ import StarterKit from "@tiptap/starter-kit"
 import Typography from "@tiptap/extension-typography"
 import Placeholder from "@tiptap/extension-placeholder"
 import CharacterCount from "@tiptap/extension-character-count"
+import { SearchAndReplace } from "~/extensions/search-and-replace"
 import { useDebounceFn } from "@vueuse/core"
 
 function draftKey(id: string) {
@@ -73,6 +74,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
         placeholder: "Begin writing...",
       }),
       CharacterCount,
+      SearchAndReplace,
     ],
     ...({ immediatelyRender: false } as any),
     editorProps: {
@@ -90,12 +92,12 @@ export function useWritingEditor(chapterId: Ref<string>) {
   })
 
   const wordCount = computed(() => {
-    editorUpdateTick.value // subscribe to editor updates
+    void editorUpdateTick.value // subscribe to editor updates
     return editor.value?.storage.characterCount.words() ?? 0
   })
 
   const characterCount = computed(() => {
-    editorUpdateTick.value // subscribe to editor updates
+    void editorUpdateTick.value // subscribe to editor updates
     return editor.value?.storage.characterCount.characters() ?? 0
   })
 
@@ -115,21 +117,21 @@ export function useWritingEditor(chapterId: Ref<string>) {
   })
 
   // Load initial content — wait for editor to be ready
-  async function loadContent() {
+  async function loadContent(initialChapter?: { content: string | null; updatedAt?: string } | null) {
     // If editor isn't ready yet, watch for it
     const ed = editor.value
     if (!ed) {
       watch(editor, (newEditor) => {
-        if (newEditor) doLoadContent(newEditor)
+        if (newEditor) doLoadContent(newEditor, initialChapter)
       }, { once: true })
       return
     }
-    doLoadContent(ed)
+    doLoadContent(ed, initialChapter)
   }
 
-  async function doLoadContent(ed: NonNullable<typeof editor.value>) {
+  async function doLoadContent(ed: NonNullable<typeof editor.value>, initialChapter?: { content: string | null; updatedAt?: string } | null) {
     try {
-      const chapter = await $fetch<{ content: string | null; updatedAt?: string }>(
+      const chapter = initialChapter ?? await $fetch<{ content: string | null; updatedAt?: string }>(
         `/api/chapters/${chapterId.value}`,
       )
       let serverJson: object | null = null

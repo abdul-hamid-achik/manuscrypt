@@ -1,16 +1,7 @@
-import { z } from "zod"
 import { db } from "../../../database"
 import { aiMessages } from "../../../database/schema"
 import { nanoid } from "nanoid"
-
-const bodySchema = z.object({
-  bookId: z.string().min(1),
-  role: z.enum(["user", "assistant"]),
-  content: z.string().min(1, "content must not be empty").max(100_000),
-  chapterId: z.string().optional(),
-  characterId: z.string().optional(),
-  command: z.string().max(100).optional(),
-})
+import { aiMessageSchema as bodySchema } from "../../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)

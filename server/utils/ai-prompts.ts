@@ -3,6 +3,18 @@ import { books, chapters, characters, locations, characterRelationships, scenes 
 import { eq, and, lt, gt, asc, desc } from "drizzle-orm"
 import { tiptapJsonToText } from "./tiptap"
 
+// Rough token estimate: ~4 chars per token for English prose
+const CHARS_PER_TOKEN = 4
+const MAX_CONTEXT_TOKENS = 8000
+const MAX_CONTEXT_CHARS = MAX_CONTEXT_TOKENS * CHARS_PER_TOKEN
+
+/** Truncate a string to a max character count, appending "..." if truncated */
+function truncate(text: string | null, maxChars: number): string | null {
+  if (!text) return null
+  if (text.length <= maxChars) return text
+  return text.slice(0, maxChars) + "..."
+}
+
 export interface BookContext {
   title: string
   genre: string | null
@@ -93,7 +105,7 @@ export function buildBookContext(bookId: string, chapterId?: string): BookContex
   let chapterSynopsis: string | null = null
   let currentContent: string | null = null
   let chapterScenes: BookContext["scenes"] = []
-  let neighboringSynopses: BookContext["neighboringSynopses"] = []
+  const neighboringSynopses: BookContext["neighboringSynopses"] = []
 
   if (chapterId) {
     const chapter = db
@@ -206,18 +218,19 @@ Genre: ${ctx.genre ?? "Literary Fiction"}.`
 
   if (ctx.characters.length > 0) {
     prompt += `\n\nKey Characters:`
+    // Budget: ~500 chars per character for backstory, 200 for description
     for (const char of ctx.characters) {
       prompt += `\n- ${char.name}`
       if (char.role) prompt += ` (${char.role})`
       if (char.age) prompt += `, age ${char.age}`
       if (char.archetype) prompt += ` [${char.archetype}]`
-      if (char.description) prompt += `: ${char.description}`
-      if (char.motivation) prompt += ` | Motivation: ${char.motivation}`
-      if (char.fear) prompt += ` | Fear: ${char.fear}`
-      if (char.contradiction) prompt += ` | Internal conflict: ${char.contradiction}`
-      if (char.traits) prompt += ` | Traits: ${char.traits}`
-      if (char.backstory) prompt += ` | Backstory: ${char.backstory}`
-      if (char.voiceNotes) prompt += ` | Voice: ${char.voiceNotes}`
+      if (char.description) prompt += `: ${truncate(char.description, 200)}`
+      if (char.motivation) prompt += ` | Motivation: ${truncate(char.motivation, 200)}`
+      if (char.fear) prompt += ` | Fear: ${truncate(char.fear, 200)}`
+      if (char.contradiction) prompt += ` | Internal conflict: ${truncate(char.contradiction, 200)}`
+      if (char.traits) prompt += ` | Traits: ${truncate(char.traits, 200)}`
+      if (char.backstory) prompt += ` | Backstory: ${truncate(char.backstory, 500)}`
+      if (char.voiceNotes) prompt += ` | Voice: ${truncate(char.voiceNotes, 200)}`
     }
   }
 
@@ -285,6 +298,10 @@ Genre: ${ctx.genre ?? "Literary Fiction"}.`
       prompt += selectedTextBlock
       prompt += `\n\nYour task: Enrich the passage with vivid sensory details — visual, auditory, olfactory, tactile, gustatory. Weave them naturally into the prose without overloading. Respond with ONLY the rewritten prose — no preamble, no explanation.`
       break
+    case "action":
+      prompt += selectedTextBlock
+      prompt += `\n\nYour task: Write physical action, movement, and kinetic prose. Focus on body language, choreography, and concrete physical details. Respond with ONLY the rewritten prose — no preamble, no explanation.`
+      break
     default:
       if (selectedText) {
         prompt += selectedTextBlock
@@ -293,6 +310,97 @@ Genre: ${ctx.genre ?? "Literary Fiction"}.`
         prompt += `\n\nYou are a thoughtful writing assistant. Help with brainstorming, feedback, plotting, character development, prose critique, or discussion. Be specific and insightful. If asked to write or generate prose, respond with ONLY the prose, ready to insert into the manuscript.`
       }
   }
+
+  // Cap total system prompt to prevent unbounded growth for large books
+  if (prompt.length > MAX_CONTEXT_CHARS) {
+    prompt = prompt.slice(0, MAX_CONTEXT_CHARS) + "\n\n[Context truncated due to length]"
+  }
+
+  return prompt
+}
+
+export function buildWriteScenePrompt(ctx: BookContext): string {
+  let prompt = buildBaseBookPrompt(ctx)
+
+  prompt += `\n\nYou are an agentic writing assistant with access to tools. Your task is to write the next scene for this book.
+
+Instructions:
+1. Use the list_chapters tool to see all chapters and their status.
+2. Use get_chapter_content to read the current chapter text.
+3. If scenes are defined in the outline, follow them. Otherwise, continue the narrative logically.
+4. Write 300-600 words of literary prose that matches the book's voice, style, and tone.
+5. Use the insert_text tool to append your prose to the appropriate chapter.
+6. Focus on sensory details, psychological depth, character voice, and narrative momentum.
+
+Write prose directly — do not explain what you're doing. Just use the tools and write.`
+
+  return prompt
+}
+
+export function buildConsistencyCheckPrompt(ctx: BookContext): string {
+  let prompt = buildBaseBookPrompt(ctx)
+
+  prompt += `\n\nYou are an agentic consistency checker for this novel. Your task is to scan chapters for inconsistencies.
+
+Instructions:
+1. Use list_chapters to see all chapters.
+2. Use get_chapter_content to read each chapter that has content.
+3. Use lookup_character and get_character_relationships to verify character details.
+4. Check for:
+   - Characters referred to by wrong names or with inconsistent descriptions
+   - Timeline inconsistencies (events happening in wrong order)
+   - Setting inconsistencies (locations described differently)
+   - Relationship inconsistencies (characters' relationships contradicting earlier chapters)
+   - POV inconsistencies within chapters
+
+Report your findings clearly, organized by chapter, with specific quotes from the text where issues occur. If no inconsistencies are found, say so.`
+
+  return prompt
+}
+
+export function buildReviewSuggestPrompt(ctx: BookContext): string {
+  let prompt = buildBaseBookPrompt(ctx)
+
+  prompt += `\n\nYou are an agentic literary editor reviewing this chapter. Your task is to provide specific, actionable feedback.
+
+Instructions:
+1. Use get_chapter_content to read the current chapter.
+2. Use lookup_character to verify character portrayals.
+3. Analyze the prose for:
+   - Pacing issues (too slow, too fast, uneven)
+   - Weak or clichéd prose that could be strengthened
+   - Dialogue that doesn't sound authentic to the character
+   - Missed opportunities for sensory detail or subtext
+   - Paragraphs that could be cut or condensed
+
+Provide 3-5 specific suggestions with exact quotes from the text and proposed improvements. Be constructive and specific — cite line-level examples.`
+
+  return prompt
+}
+
+function buildBaseBookPrompt(ctx: BookContext): string {
+  let prompt = `You are a literary fiction writing assistant for the novel "${ctx.title}".
+Genre: ${ctx.genre ?? "Literary Fiction"}.`
+
+  if (ctx.premise) prompt += `\nPremise: ${ctx.premise}`
+  if (ctx.styleGuide) prompt += `\n\nStyle Guide: ${ctx.styleGuide}`
+
+  if (ctx.characters.length > 0) {
+    prompt += `\n\nKey Characters:`
+    for (const char of ctx.characters) {
+      prompt += `\n- ${char.name}`
+      if (char.role) prompt += ` (${char.role})`
+    }
+  }
+
+  if (ctx.locations?.length > 0) {
+    prompt += `\n\nLocations:`
+    for (const loc of ctx.locations) {
+      prompt += `\n- ${loc.name}`
+    }
+  }
+
+  if (ctx.chapterSynopsis) prompt += `\n\nCurrent Chapter Synopsis: ${ctx.chapterSynopsis}`
 
   return prompt
 }

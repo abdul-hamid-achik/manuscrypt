@@ -103,14 +103,24 @@ async function submit() {
   }
 }
 
-async function remove(rel: CharacterRelationship) {
-  const confirmed = window.confirm('Delete this relationship? This cannot be undone.')
-  if (!confirmed) return
+const showDeleteRelModal = ref(false)
+const pendingDeleteRel = ref<CharacterRelationship | null>(null)
+
+function remove(rel: CharacterRelationship) {
+  pendingDeleteRel.value = rel
+  showDeleteRelModal.value = true
+}
+
+async function confirmDeleteRelationship() {
+  if (!pendingDeleteRel.value) return
   try {
-    await deleteRelationship(rel.id)
+    await deleteRelationship(pendingDeleteRel.value.id)
     await refresh()
   } catch (e) {
     toast.add({ title: 'Error', description: e instanceof Error ? e.message : 'Could not delete relationship', color: 'error' })
+  } finally {
+    showDeleteRelModal.value = false
+    pendingDeleteRel.value = null
   }
 }
 </script>
@@ -218,6 +228,24 @@ async function remove(rel: CharacterRelationship) {
         Create at least two characters to start defining relationships.
       </p>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <UModal v-model:open="showDeleteRelModal">
+      <template #header>
+        <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">Delete Relationship</h3>
+      </template>
+      <template #body>
+        <p class="text-sm text-(--ui-text-muted)">
+          Are you sure you want to delete this relationship? This cannot be undone.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton label="Cancel" variant="ghost" @click="showDeleteRelModal = false" />
+          <UButton label="Delete" color="error" @click="confirmDeleteRelationship" />
+        </div>
+      </template>
+    </UModal>
 
     <!-- Create / Edit Slideover -->
     <USlideover

@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config"
-import { resolve } from "path"
+import { resolve } from "node:path"
 
 export default defineConfig({
   test: {
@@ -11,6 +11,12 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       exclude: ["node_modules", ".nuxt", ".output", "tests"],
+      thresholds: {
+        statements: 70,
+        branches: 60,
+        functions: 50,
+        lines: 70,
+      },
     },
   },
   resolve: {

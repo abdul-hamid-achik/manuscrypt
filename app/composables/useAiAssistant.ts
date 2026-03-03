@@ -28,6 +28,7 @@ export function useAiAssistant(
   const messages = computed(() => session.value.messages)
   const error = computed(() => session.value.error)
   const historyLoaded = computed(() => session.value.historyLoaded)
+  const activeTools = computed(() => session.value.activeTools)
 
   async function saveMessage(
     msg: { role: string; content: string; characterId?: string; command?: string },
@@ -76,11 +77,13 @@ export function useAiAssistant(
     userMessage: string,
     context: AiContext = {},
     command?: string,
+    agentMode?: boolean,
   ) {
     const s = session.value
     s.error = null
     s.isStreaming = true
     s.streamedText = ""
+    s.activeTools = []
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -90,6 +93,8 @@ export function useAiAssistant(
       timestamp: new Date(),
     }
     s.messages.push(userMsg)
+
+    let usedWriteTools = false
 
     try {
       // Build API messages, enriching the last user message with selected text for context
@@ -112,6 +117,7 @@ export function useAiAssistant(
           command,
           selectedText: context.selectedText,
           messages: apiMessages,
+          agentMode,
         },
         responseType: "stream",
       })
@@ -121,6 +127,12 @@ export function useAiAssistant(
         if (data.type === "text") {
           fullText += data.content
           s.streamedText = fullText
+        } else if (data.type === "tool_start" && data.tool) {
+          s.activeTools = [...s.activeTools, data.tool]
+        } else if (data.type === "tool_result" && data.tool) {
+          s.activeTools = s.activeTools.filter((t) => t !== data.tool)
+        } else if (data.type === "done") {
+          if (data.usedWriteTools) usedWriteTools = true
         } else if (data.type === "error") {
           s.error = data.content ?? "Stream failed"
         }
@@ -142,7 +154,10 @@ export function useAiAssistant(
       s.error = e instanceof Error ? e.message : "Failed to connect to AI"
     } finally {
       s.isStreaming = false
+      s.activeTools = []
     }
+
+    return { usedWriteTools }
   }
 
   async function interviewCharacter(message: string) {
@@ -220,6 +235,7 @@ export function useAiAssistant(
     messages,
     error,
     historyLoaded,
+    activeTools,
     send,
     interviewCharacter,
     loadHistory,

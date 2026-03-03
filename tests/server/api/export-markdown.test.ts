@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createTestDb } from "../../setup/test-db"
 import { nanoid } from "nanoid"
 
-const { db, sqlite } = createTestDb()
-
-vi.mock("../../../server/database", () => ({ db }))
-
 import { books, chapters } from "../../../server/database/schema"
 import { eq, asc } from "drizzle-orm"
 import { tiptapJsonToText } from "../../../server/utils/tiptap"
+
+const { db, sqlite } = createTestDb()
+
+vi.mock("../../../server/database", () => ({ db }))
 
 let bookId: string
 
@@ -50,7 +50,7 @@ describe("Markdown Export", () => {
 
   it("generates correct filename", () => {
     const book = db.select().from(books).where(eq(books.id, bookId)).get()!
-    const filename = `${book.title.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.md`
+    const filename = `${book.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.md`
     expect(filename).toBe("my-novel.md")
   })
 
@@ -58,7 +58,7 @@ describe("Markdown Export", () => {
     const book = db.select().from(books).where(eq(books.id, bookId)).get()!
     const allChapters = db.select().from(chapters).where(eq(chapters.bookId, bookId)).all()
 
-    let markdown = `# ${book.title}\n\n`
+    const markdown = `# ${book.title}\n\n`
     expect(allChapters).toHaveLength(0)
     expect(markdown).toBe("# My Novel\n\n")
   })

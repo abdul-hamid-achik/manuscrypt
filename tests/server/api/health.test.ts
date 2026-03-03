@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { createTestDb } from "../../setup/test-db"
 
-const { db, sqlite } = createTestDb()
+const { db, sqlite: _sqlite } = createTestDb()
 
 vi.mock("../../../server/database", () => ({ db }))
 
@@ -10,7 +10,7 @@ vi.mock("h3", async () => {
   const actual = await vi.importActual<typeof import("h3")>("h3")
   return {
     ...actual,
-    defineEventHandler: (handler: Function) => handler,
+    defineEventHandler: (handler: (...args: unknown[]) => unknown) => handler,
     createError: vi.fn((opts: { statusCode: number; message: string }) => {
       const err = new Error(opts.message) as Error & { statusCode: number }
       err.statusCode = opts.statusCode
@@ -20,7 +20,7 @@ vi.mock("h3", async () => {
 })
 
 // Need to provide defineEventHandler globally for the import
-vi.stubGlobal("defineEventHandler", (handler: Function) => handler)
+vi.stubGlobal("defineEventHandler", (handler: (...args: unknown[]) => unknown) => handler)
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
   const err = new Error(opts.message) as Error & { statusCode: number }
   err.statusCode = opts.statusCode

@@ -2,15 +2,13 @@ import { db } from "../../database"
 import { books, chapters } from "../../database/schema"
 import { eq, asc } from "drizzle-orm"
 import { tiptapJsonToText } from "../../utils/tiptap"
+import { parseBody, exportSchema } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
+  const { bookId } = parseBody(exportSchema, body)
 
-  if (!body.bookId) {
-    throw createError({ statusCode: 400, message: "bookId is required" })
-  }
-
-  const book = db.select().from(books).where(eq(books.id, body.bookId)).get()
+  const book = db.select().from(books).where(eq(books.id, bookId)).get()
   if (!book) {
     throw createError({ statusCode: 404, message: "Book not found" })
   }
@@ -18,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const allChapters = db
     .select()
     .from(chapters)
-    .where(eq(chapters.bookId, body.bookId))
+    .where(eq(chapters.bookId, bookId))
     .orderBy(asc(chapters.sortOrder))
     .all()
 
@@ -38,7 +36,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const filename = `${book.title.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.md`
+  const filename = `${book.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.md`
 
   return { markdown, filename }
 })

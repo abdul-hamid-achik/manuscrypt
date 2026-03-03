@@ -1,11 +1,6 @@
-import { z } from "zod"
 import { createAnthropicClient, callAnthropicJson } from "../../utils/ai-stream"
 import { checkRateLimit } from "../../utils/rate-limit"
-
-const bodySchema = z.object({
-  text: z.string().min(100, "Please provide at least 100 characters of text to analyze").max(50000, "Text must not exceed 50,000 characters"),
-  bookId: z.string().optional(),
-})
+import { aiStyleAnalyzeSchema as bodySchema } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   checkRateLimit(event, { maxRequests: 20, windowMs: 60_000 })

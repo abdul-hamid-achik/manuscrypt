@@ -6,6 +6,8 @@ const props = defineProps<{
   projectId: string
   isFirst?: boolean
   isLast?: boolean
+  characterMap?: Map<string, string>
+  locationMap?: Map<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -92,14 +94,24 @@ async function addScene() {
   }
 }
 
-async function handleDeleteScene(id: string) {
-  const confirmed = window.confirm('Delete this scene? This cannot be undone.')
-  if (!confirmed) return
+const showDeleteSceneModal = ref(false)
+const pendingDeleteSceneId = ref<string | null>(null)
+
+function handleDeleteScene(id: string) {
+  pendingDeleteSceneId.value = id
+  showDeleteSceneModal.value = true
+}
+
+async function confirmDeleteScene() {
+  if (!pendingDeleteSceneId.value) return
   try {
-    await $fetch(`/api/scenes/${id}` as string, { method: 'DELETE' })
-    scenes.value = scenes.value.filter(s => s.id !== id)
+    await $fetch(`/api/scenes/${pendingDeleteSceneId.value}` as string, { method: 'DELETE' })
+    scenes.value = scenes.value.filter(s => s.id !== pendingDeleteSceneId.value)
   } catch {
     // handle error
+  } finally {
+    showDeleteSceneModal.value = false
+    pendingDeleteSceneId.value = null
   }
 }
 
@@ -270,6 +282,8 @@ function onSceneCancelled() {
           v-for="scene in scenes"
           :key="scene.id"
           :scene="scene"
+          :character-map="characterMap"
+          :location-map="locationMap"
           @edit="handleEditScene"
           @delete="handleDeleteScene"
         />
@@ -288,6 +302,24 @@ function onSceneCancelled() {
         />
       </template>
     </div>
+
+    <!-- Delete scene confirmation modal -->
+    <UModal v-model:open="showDeleteSceneModal">
+      <template #header>
+        <h3 class="text-lg font-semibold text-(--ui-text-highlighted)">Delete Scene</h3>
+      </template>
+      <template #body>
+        <p class="text-sm text-(--ui-text-muted)">
+          Are you sure you want to delete this scene? This cannot be undone.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton label="Cancel" variant="ghost" @click="showDeleteSceneModal = false" />
+          <UButton label="Delete" color="error" @click="confirmDeleteScene" />
+        </div>
+      </template>
+    </UModal>
 
     <!-- Scene edit slideover -->
     <USlideover

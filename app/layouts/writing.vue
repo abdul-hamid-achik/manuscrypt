@@ -107,8 +107,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             color="neutral"
             icon="i-lucide-maximize-2"
             size="xs"
-            @click="toggleFocusMode"
             aria-label="Enter focus mode"
+            @click="toggleFocusMode"
           />
         </UTooltip>
 

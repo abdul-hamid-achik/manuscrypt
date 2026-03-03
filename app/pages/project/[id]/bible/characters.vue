@@ -17,7 +17,7 @@ function openCreate() {
   showForm.value = true
 }
 
-function openEdit(character: Character) {
+function _openEdit(character: Character) {
   editingCharacter.value = character
   showForm.value = true
 }

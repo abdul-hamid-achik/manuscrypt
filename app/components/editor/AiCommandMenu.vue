@@ -34,6 +34,37 @@ const commands = [
     icon: "i-lucide-eye",
     shortcut: "/sensory",
   },
+  {
+    id: "action",
+    label: "Write Action",
+    description: "Generate physical action and movement",
+    icon: "i-lucide-swords",
+    shortcut: "/action",
+  },
+]
+
+const agenticCommands = [
+  {
+    id: "write-scene",
+    label: "Write Next Scene",
+    description: "Reads outline, writes prose, inserts into chapter",
+    icon: "i-lucide-bot",
+    shortcut: "/write-scene",
+  },
+  {
+    id: "consistency-check",
+    label: "Consistency Check",
+    description: "Scans chapters for character/setting inconsistencies",
+    icon: "i-lucide-search-check",
+    shortcut: "/consistency-check",
+  },
+  {
+    id: "review-suggest",
+    label: "Review & Suggest",
+    description: "Reviews current chapter, suggests specific edits",
+    icon: "i-lucide-message-square-text",
+    shortcut: "/review-suggest",
+  },
 ]
 
 function selectCommand(cmd: string) {
@@ -73,6 +104,30 @@ defineExpose({ toggle, isOpen })
           @click="selectCommand(cmd.id)"
         >
           <UIcon :name="cmd.icon" class="text-lg mt-0.5 text-(--ui-primary)" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-(--ui-text-highlighted)">
+              {{ cmd.label }}
+            </p>
+            <p class="text-xs text-(--ui-text-dimmed)">
+              {{ cmd.description }}
+            </p>
+          </div>
+          <span class="text-xs text-(--ui-text-muted) font-mono mt-0.5">
+            {{ cmd.shortcut }}
+          </span>
+        </button>
+      </div>
+      <div class="p-2 border-t border-(--ui-border)">
+        <p class="text-xs font-medium text-(--ui-text-dimmed)">Agent Commands</p>
+      </div>
+      <div class="p-1">
+        <button
+          v-for="cmd in agenticCommands"
+          :key="cmd.id"
+          class="w-full flex items-start gap-3 p-2 rounded-md hover:bg-(--ui-bg-elevated) transition-colors text-left"
+          @click="selectCommand(cmd.id)"
+        >
+          <UIcon :name="cmd.icon" class="text-lg mt-0.5 text-amber-500" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-(--ui-text-highlighted)">
               {{ cmd.label }}

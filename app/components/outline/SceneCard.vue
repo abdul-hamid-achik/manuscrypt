@@ -3,6 +3,8 @@ import type { Scene } from '~~/shared/types'
 
 const props = defineProps<{
   scene: Scene
+  characterMap?: Map<string, string>
+  locationMap?: Map<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -47,15 +49,19 @@ const moodDisplay = computed(() => {
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--ui-text-muted)">
         <span v-if="scene.povCharacterId" class="flex items-center gap-1">
           <span class="i-lucide-user size-3" />
-          POV
+          {{ characterMap?.get(scene.povCharacterId) ?? 'POV' }}
         </span>
         <span v-if="scene.locationId" class="flex items-center gap-1">
           <span class="i-lucide-map-pin size-3" />
-          Location
+          {{ locationMap?.get(scene.locationId) ?? 'Location' }}
         </span>
         <span v-if="moodDisplay" class="flex items-center gap-1">
           <span class="i-lucide-heart size-3" />
           {{ moodDisplay }}
+        </span>
+        <span v-if="scene.targetWordCount" class="flex items-center gap-1">
+          <span class="i-lucide-target size-3" />
+          {{ scene.targetWordCount.toLocaleString() }} words
         </span>
       </div>
     </div>

@@ -4,11 +4,14 @@ import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 import * as schema from "../../../server/database/schema"
 
+import { books, chapters, characters, locations, characterRelationships, scenes } from "../../../server/database/schema"
+import { eq, asc } from "drizzle-orm"
+
 const sqlite = new Database(":memory:")
 sqlite.pragma("foreign_keys = ON")
 sqlite.exec(`
   CREATE TABLE books (id TEXT PRIMARY KEY, title TEXT NOT NULL, genre TEXT, premise TEXT, target_word_count INTEGER DEFAULT 80000, status TEXT DEFAULT 'planning', style_guide TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
-  CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
+  CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, target_word_count INTEGER, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
   CREATE TABLE scenes (id TEXT PRIMARY KEY, chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE, title TEXT NOT NULL, synopsis TEXT, pov_character_id TEXT, location_id TEXT, mood_start TEXT, mood_end TEXT, target_word_count INTEGER, status TEXT DEFAULT 'planned', sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')));
   CREATE TABLE characters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, name TEXT NOT NULL, role TEXT, age TEXT, archetype TEXT, description TEXT, motivation TEXT, fear TEXT, contradiction TEXT, voice_notes TEXT, traits TEXT, backstory TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
   CREATE TABLE character_relationships (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, from_character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE, to_character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE, relationship_type TEXT NOT NULL, description TEXT);
@@ -19,9 +22,6 @@ sqlite.exec(`
 const db = drizzle(sqlite, { schema })
 
 vi.mock("../../../server/database", () => ({ db }))
-
-import { books, chapters, characters, locations, characterRelationships, scenes } from "../../../server/database/schema"
-import { eq, asc } from "drizzle-orm"
 
 function insertBook(overrides: Partial<{ id: string; title: string }> = {}) {
   const id = overrides.id ?? nanoid()
@@ -53,7 +53,7 @@ function insertScene(chapterId: string, overrides: Partial<{ id: string; title: 
   return id
 }
 
-function insertRelationship(bookId: string, fromId: string, toId: string) {
+function _insertRelationship(bookId: string, fromId: string, toId: string) {
   const id = nanoid()
   db.insert(characterRelationships).values({ id, bookId, fromCharacterId: fromId, toCharacterId: toId, relationshipType: "friend" }).run()
   return id

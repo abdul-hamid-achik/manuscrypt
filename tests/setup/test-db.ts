@@ -28,6 +28,7 @@ export function createTestDb() {
       synopsis TEXT,
       content TEXT,
       word_count INTEGER DEFAULT 0,
+      target_word_count INTEGER,
       status TEXT DEFAULT 'planned',
       act INTEGER,
       sort_order INTEGER NOT NULL,
@@ -76,6 +77,8 @@ export function createTestDb() {
       relationship_type TEXT NOT NULL,
       description TEXT
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_relationships_unique
+      ON character_relationships(from_character_id, to_character_id, book_id);
 
     CREATE TABLE IF NOT EXISTS locations (
       id TEXT PRIMARY KEY,
@@ -90,13 +93,24 @@ export function createTestDb() {
     CREATE TABLE IF NOT EXISTS ai_messages (
       id TEXT PRIMARY KEY,
       book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-      chapter_id TEXT,
-      character_id TEXT,
+      chapter_id TEXT REFERENCES chapters(id) ON DELETE SET NULL,
+      character_id TEXT REFERENCES characters(id) ON DELETE SET NULL,
       role TEXT NOT NULL,
       content TEXT NOT NULL,
       command TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS content_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      word_count INTEGER NOT NULL DEFAULT 0,
+      label TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_snapshots_chapter ON content_snapshots(chapter_id);
+    CREATE INDEX IF NOT EXISTS idx_snapshots_chapter_date ON content_snapshots(chapter_id, created_at);
 
     CREATE TABLE IF NOT EXISTS writing_sessions (
       id TEXT PRIMARY KEY,

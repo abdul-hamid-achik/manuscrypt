@@ -12,6 +12,7 @@ interface ChatSession {
   streamedText: string
   error: string | null
   historyLoaded: boolean
+  activeTools: string[]
 }
 
 function createSession(): ChatSession {
@@ -21,6 +22,7 @@ function createSession(): ChatSession {
     streamedText: "",
     error: null,
     historyLoaded: false,
+    activeTools: [],
   }
 }
 

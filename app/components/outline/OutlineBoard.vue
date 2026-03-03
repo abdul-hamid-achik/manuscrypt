@@ -18,6 +18,23 @@ const {
   moveChapter,
 } = useOutline(props.bookId)
 
+const { data: charactersRaw } = useCharacters(props.bookId)
+const { data: locationsRaw } = useLocations(props.bookId)
+
+const characterMap = computed(() => {
+  const map = new Map<string, string>()
+  const list = (charactersRaw.value as any[] | null) ?? []
+  for (const c of list) map.set(c.id, c.name)
+  return map
+})
+
+const locationMap = computed(() => {
+  const map = new Map<string, string>()
+  const list = (locationsRaw.value as any[] | null) ?? []
+  for (const l of list) map.set(l.id, l.name)
+  return map
+})
+
 const editingChapter = ref<Chapter | null>(null)
 const showEditModal = ref(false)
 const editForm = reactive({
@@ -192,6 +209,8 @@ async function onActDrop(e: DragEvent, actNum: number) {
   await reorderChapter(chapter.id, newSortOrder)
   await refreshChapters()
 }
+
+defineExpose({ refreshChapters })
 </script>
 
 <template>
@@ -252,6 +271,8 @@ async function onActDrop(e: DragEvent, actNum: number) {
               :project-id="projectId"
               :is-first="isFirstInAct(chapter, chaptersByAct[act.num] ?? [])"
               :is-last="isLastInAct(chapter, chaptersByAct[act.num] ?? [])"
+              :character-map="characterMap"
+              :location-map="locationMap"
               @edit="openEditModal"
               @delete="handleDelete"
               @move-up="handleMoveUp"

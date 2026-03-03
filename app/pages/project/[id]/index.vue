@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Book, Chapter, BookStats, WritingSession } from '~~/shared/types'
+import type { Chapter, BookStats, WritingSession } from '~~/shared/types'
 
 definePageMeta({ layout: 'default' })
 

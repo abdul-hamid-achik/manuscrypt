@@ -7,7 +7,7 @@ export default defineEventHandler(async () => {
     // Verify DB is connected
     db.select({ count: sql<number>`count(*)` }).from(books).get()
     return { status: "ok", timestamp: new Date().toISOString() }
-  } catch (e) {
+  } catch {
     throw createError({
       statusCode: 503,
       message: "Database unavailable",

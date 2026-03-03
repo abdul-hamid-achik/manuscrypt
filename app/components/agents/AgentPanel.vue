@@ -15,7 +15,7 @@ const isExpanded = ref(true)
 const chatInput = ref("")
 const messagesContainer = ref<HTMLElement | null>(null)
 
-const { isStreaming, streamedText, messages, error, send, clearMessages, loadHistory } =
+const { isStreaming, streamedText, messages, error, activeTools, send, clearMessages, loadHistory } =
   useAiAssistant(props.bookId)
 
 // Load persisted general chat history on mount
@@ -58,6 +58,10 @@ async function sendMessage() {
   }
 }
 
+const agenticCommands = ["write-scene", "consistency-check", "review-suggest"]
+
+const toast = useToast()
+
 async function executeCommand(command: string, selectedText?: string) {
   // If no selectedText was passed (e.g. from in-panel command menu), use captured selection
   const resolvedText = selectedText || capturedSelection.value?.text || undefined
@@ -70,14 +74,26 @@ async function executeCommand(command: string, selectedText?: string) {
       ? `[/${command}] ${resolvedText}`
       : `/${command}`
 
+  const isAgentic = agenticCommands.includes(command)
   const msgCountBefore = messages.value.length
-  await send(userMessage, { chapterId: props.chapterId, selectedText: resolvedText }, command)
+  const result = await send(
+    userMessage,
+    { chapterId: props.chapterId, selectedText: resolvedText },
+    command,
+    isAgentic,
+  )
 
   if (selection && messages.value.length > msgCountBefore) {
     const lastMsg = messages.value.at(-1)
     if (lastMsg?.role === "assistant") {
       messageSelections.set(lastMsg.id, selection)
     }
+  }
+
+  // Trigger refresh when write tools were used
+  if (result?.usedWriteTools) {
+    emit("refresh")
+    toast.add({ title: "AI updated chapter content", color: "success" })
   }
 
   await nextTick()
@@ -107,6 +123,7 @@ watch(streamedText, async () => {
 const emit = defineEmits<{
   insert: [text: string]
   replace: [text: string, from: number, to: number]
+  refresh: []
 }>()
 
 defineExpose({ executeCommand })
@@ -217,6 +234,15 @@ defineExpose({ executeCommand })
               @click="emit('insert', msg.content)"
             />
           </div>
+        </div>
+
+        <!-- Tool activity indicator -->
+        <div
+          v-if="activeTools.length > 0"
+          class="flex items-center gap-2 px-3 py-1.5 text-xs text-(--ui-text-dimmed)"
+        >
+          <UIcon name="i-lucide-loader-2" class="animate-spin text-(--ui-primary)" />
+          <span>Using tool: {{ activeTools[activeTools.length - 1] }}</span>
         </div>
 
         <!-- Streaming indicator -->

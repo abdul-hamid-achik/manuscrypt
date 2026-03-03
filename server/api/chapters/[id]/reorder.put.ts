@@ -1,14 +1,12 @@
 import { db } from "../../../database"
 import { chapters } from "../../../database/schema"
 import { eq } from "drizzle-orm"
+import { parseBody, reorderSchema } from "../../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id")
   const body = await readBody(event)
-
-  if (typeof body.newOrder !== "number") {
-    throw createError({ statusCode: 400, message: "newOrder (number) is required" })
-  }
+  const { newOrder } = parseBody(reorderSchema, body)
 
   const existing = db.select().from(chapters).where(eq(chapters.id, id!)).get()
   if (!existing) {
@@ -17,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
   db.update(chapters)
     .set({
-      sortOrder: body.newOrder,
+      sortOrder: newOrder,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(chapters.id, id!))

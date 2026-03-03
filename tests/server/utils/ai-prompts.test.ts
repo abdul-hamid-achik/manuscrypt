@@ -1,15 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { nanoid } from "nanoid"
 
+import { books, chapters, characters, locations, characterRelationships, scenes } from "../../../server/database/schema"
+import { buildBookContext, buildSystemPrompt } from "../../../server/utils/ai-prompts"
+
 const { db, sqlite } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Database = require("better-sqlite3")
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { drizzle } = require("drizzle-orm/better-sqlite3")
 
   const sqlite = new Database(":memory:")
   sqlite.pragma("foreign_keys = ON")
   sqlite.exec(`
     CREATE TABLE books (id TEXT PRIMARY KEY, title TEXT NOT NULL, genre TEXT, premise TEXT, target_word_count INTEGER DEFAULT 80000, status TEXT DEFAULT 'planning', style_guide TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
-    CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
+    CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, target_word_count INTEGER, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE characters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, name TEXT NOT NULL, role TEXT, age TEXT, archetype TEXT, description TEXT, motivation TEXT, fear TEXT, contradiction TEXT, voice_notes TEXT, traits TEXT, backstory TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE locations (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sensory_details TEXT, emotional_tone TEXT, created_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE character_relationships (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, from_character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE, to_character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE, relationship_type TEXT NOT NULL, description TEXT);
@@ -20,9 +25,6 @@ const { db, sqlite } = vi.hoisted(() => {
 })
 
 vi.mock("../../../server/database", () => ({ db }))
-
-import { books, chapters, characters, locations, characterRelationships, scenes } from "../../../server/database/schema"
-import { buildBookContext, buildSystemPrompt } from "../../../server/utils/ai-prompts"
 
 beforeEach(() => {
   sqlite.exec("DELETE FROM scenes; DELETE FROM character_relationships; DELETE FROM locations; DELETE FROM characters; DELETE FROM chapters; DELETE FROM books;")
@@ -280,5 +282,121 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("Untitled")
     expect(prompt).not.toContain("Key Characters")
     expect(prompt).not.toContain("Chapter Synopsis")
+  })
+
+  it("generates action command prompt", () => {
+    const prompt = buildSystemPrompt(baseCtx, "action")
+    expect(prompt).toContain("Write physical action")
+    expect(prompt).toContain("body language")
+    expect(prompt).toContain("ONLY the rewritten prose")
+  })
+
+  it("includes selected text in action command", () => {
+    const prompt = buildSystemPrompt(baseCtx, "action", "He ran across the field.")
+    expect(prompt).toContain("He ran across the field.")
+    expect(prompt).toContain("Write physical action")
+  })
+
+  it("generates sensory command with correct task description", () => {
+    const prompt = buildSystemPrompt(baseCtx, "sensory")
+    expect(prompt).toContain("vivid sensory details")
+    expect(prompt).toContain("visual, auditory, olfactory, tactile, gustatory")
+    expect(prompt).toContain("ONLY the rewritten prose")
+  })
+
+  it("truncates long character backstories with ellipsis", () => {
+    const longBackstory = "A".repeat(600) // exceeds the 500 char budget
+    const ctxWithLongBackstory = {
+      ...baseCtx,
+      characters: [
+        {
+          ...baseCtx.characters[0],
+          backstory: longBackstory,
+        },
+      ],
+    }
+    const prompt = buildSystemPrompt(ctxWithLongBackstory)
+    expect(prompt).toContain("Backstory: " + "A".repeat(500) + "...")
+    expect(prompt).not.toContain("A".repeat(600))
+  })
+
+  it("truncates long character descriptions with ellipsis", () => {
+    const longDescription = "B".repeat(300) // exceeds the 200 char budget
+    const ctxWithLongDesc = {
+      ...baseCtx,
+      characters: [
+        {
+          ...baseCtx.characters[0],
+          description: longDescription,
+        },
+      ],
+    }
+    const prompt = buildSystemPrompt(ctxWithLongDesc)
+    expect(prompt).toContain("B".repeat(200) + "...")
+    expect(prompt).not.toContain("B".repeat(300))
+  })
+
+  it("caps total prompt at MAX_CONTEXT_CHARS and appends truncation notice", () => {
+    // MAX_CONTEXT_CHARS = 8000 * 4 = 32000
+    // Create a context with many characters to blow past the limit
+    const manyCharacters = Array.from({ length: 100 }, (_, i) => ({
+      name: `Character${i}`,
+      role: "Supporting",
+      age: "30",
+      archetype: "The Helper",
+      description: "D".repeat(200),
+      motivation: "M".repeat(200),
+      fear: "F".repeat(200),
+      contradiction: "C".repeat(200),
+      voiceNotes: "V".repeat(200),
+      traits: "T".repeat(200),
+      backstory: "B".repeat(500),
+    }))
+    const hugeCtx = {
+      ...baseCtx,
+      characters: manyCharacters,
+    }
+    const prompt = buildSystemPrompt(hugeCtx)
+    expect(prompt).toContain("[Context truncated due to length]")
+    // The prompt should be capped: 32000 chars + the truncation notice
+    expect(prompt.length).toBeLessThanOrEqual(32000 + "\n\n[Context truncated due to length]".length)
+  })
+
+  it("includes scene details in prompt", () => {
+    const ctxWithScenes = {
+      ...baseCtx,
+      scenes: [
+        {
+          title: "The Opening",
+          synopsis: "Alice enters the city",
+          povCharacterName: "Alice",
+          locationName: "The Library",
+          moodStart: "hopeful",
+          moodEnd: "anxious",
+        },
+      ],
+    }
+    const prompt = buildSystemPrompt(ctxWithScenes)
+    expect(prompt).toContain("Scenes in Current Chapter")
+    expect(prompt).toContain("The Opening")
+    expect(prompt).toContain("Alice enters the city")
+    expect(prompt).toContain("POV: Alice")
+    expect(prompt).toContain("Location: The Library")
+    expect(prompt).toContain("Mood: hopeful → anxious")
+  })
+
+  it("includes neighboring chapter synopses in prompt", () => {
+    const ctxWithNeighbors = {
+      ...baseCtx,
+      neighboringSynopses: [
+        { number: 1, title: "Before", synopsis: "Setup happens" },
+        { number: 3, title: "After", synopsis: "Resolution happens" },
+      ],
+    }
+    const prompt = buildSystemPrompt(ctxWithNeighbors)
+    expect(prompt).toContain("Neighboring Chapters")
+    expect(prompt).toContain('Chapter 1 "Before"')
+    expect(prompt).toContain("Setup happens")
+    expect(prompt).toContain('Chapter 3 "After"')
   })
 })

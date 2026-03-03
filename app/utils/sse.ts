@@ -1,5 +1,14 @@
-export function parseSseLines(chunk: string): Array<{ type: string; content?: string }> {
-  const results: Array<{ type: string; content?: string }> = []
+export interface SseEvent {
+  type: string
+  content?: string
+  tool?: string
+  success?: boolean
+  usedWriteTools?: boolean
+  [key: string]: unknown
+}
+
+export function parseSseLines(chunk: string): SseEvent[] {
+  const results: SseEvent[] = []
   const lines = chunk.split("\n")
   for (const line of lines) {
     const trimmed = line.startsWith("data: ") ? line.slice(6) : line.trim()
@@ -15,7 +24,7 @@ export function parseSseLines(chunk: string): Array<{ type: string; content?: st
 
 export async function readSseStream(
   response: ReadableStream,
-  onData: (data: { type: string; content?: string }) => void,
+  onData: (data: SseEvent) => void,
 ): Promise<void> {
   const reader = response.getReader()
   const decoder = new TextDecoder()

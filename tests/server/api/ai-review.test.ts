@@ -1,16 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { nanoid } from "nanoid"
-import Database from "better-sqlite3"
-import { drizzle } from "drizzle-orm/better-sqlite3"
-import * as schema from "../../../server/database/schema"
+import { books, chapters } from "../../../server/database/schema"
+import { eq } from "drizzle-orm"
+import { callAnthropicJson } from "../../../server/utils/ai-stream"
 
-const sqlite = new Database(":memory:")
-sqlite.pragma("foreign_keys = ON")
-sqlite.exec(`
-  CREATE TABLE books (id TEXT PRIMARY KEY, title TEXT NOT NULL, genre TEXT, premise TEXT, target_word_count INTEGER DEFAULT 80000, status TEXT DEFAULT 'planning', style_guide TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
-  CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
-`)
-const db = drizzle(sqlite, { schema })
+const { db, sqlite } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Database = require("better-sqlite3")
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { drizzle } = require("drizzle-orm/better-sqlite3")
+  const sqlite = new Database(":memory:")
+  sqlite.pragma("foreign_keys = ON")
+  sqlite.exec(`
+    CREATE TABLE books (id TEXT PRIMARY KEY, title TEXT NOT NULL, genre TEXT, premise TEXT, target_word_count INTEGER DEFAULT 80000, status TEXT DEFAULT 'planning', style_guide TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
+    CREATE TABLE chapters (id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, synopsis TEXT, content TEXT, word_count INTEGER DEFAULT 0, target_word_count INTEGER, status TEXT DEFAULT 'planned', act INTEGER, sort_order INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
+  `)
+  const db = drizzle(sqlite)
+  return { db, sqlite }
+})
 
 // Mock Nitro auto-imports
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
@@ -25,10 +32,6 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }))
 
 vi.mock("../../../server/database", () => ({ db }))
-
-import { books, chapters } from "../../../server/database/schema"
-import { eq } from "drizzle-orm"
-import { callAnthropicJson } from "../../../server/utils/ai-stream"
 
 let bookId: string
 

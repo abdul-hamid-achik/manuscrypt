@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(
     event,
     "Content-Disposition",
-    `attachment; filename="${book.title.replace(/[^a-zA-Z0-9 ]/g, "")}.md"`
+    `attachment; filename="${book.title.replace(/[^a-z0-9 ]/gi, "")}.md"`
   )
 
   return markdown

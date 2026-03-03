@@ -1,13 +1,10 @@
-import { z } from "zod"
 import { db } from "../../database"
 import { chapters } from "../../database/schema"
 import { eq } from "drizzle-orm"
 import { createAnthropicClient, callAnthropicJson } from "../../utils/ai-stream"
 import { checkRateLimit } from "../../utils/rate-limit"
-
-const bodySchema = z.object({
-  chapterId: z.string(),
-})
+import { tiptapJsonToText } from "../../utils/tiptap"
+import { aiReviewSchema as bodySchema } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
   checkRateLimit(event, { maxRequests: 20, windowMs: 60_000 })
@@ -32,7 +29,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: "Chapter not found" })
   }
 
-  if (!chapter.content || chapter.content.trim().length < 50) {
+  const chapterText = tiptapJsonToText(chapter.content)
+  if (!chapterText || chapterText.trim().length < 50) {
     throw createError({ statusCode: 400, message: "Chapter needs at least 50 characters of content to review" })
   }
 
@@ -50,7 +48,7 @@ export default defineEventHandler(async (event) => {
 Be honest but constructive. Give specific examples from the text when possible.
 Return ONLY valid JSON, no markdown code fences, no other text.`,
     messages: [
-      { role: "user", content: `Review this chapter titled "${chapter.title}":\n\n${chapter.content}` },
+      { role: "user", content: `Review this chapter titled "${chapter.title}":\n\n${chapterText}` },
     ],
     errorLabel: "review",
   })

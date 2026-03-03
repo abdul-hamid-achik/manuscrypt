@@ -98,7 +98,7 @@ watch(chapterTitle, (val) => {
 })
 
 // Handle AI commands from the command menu
-function handleAiCommand(command: string) {
+function _handleAiCommand(command: string) {
   if (!editorRef.value || !agentPanelRef.value) return
 
   const selectedText = editorRef.value.getSelectedText()
@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
           v-model="chapterTitle"
           class="w-full text-2xl font-serif font-bold bg-transparent border-none outline-none text-(--ui-text-highlighted) placeholder:text-(--ui-text-muted)"
           placeholder="Chapter Title"
-        />
+        >
       </div>
 
       <!-- Draft recovery banner -->
@@ -173,6 +173,7 @@ onBeforeUnmount(() => {
         ref="editorRef"
         :chapter-id="chapterId"
         :focus-mode="focusMode"
+        :initial-chapter="chapter"
         class="flex-1"
       />
     </div>

@@ -1,7 +1,6 @@
 import { db } from "../database"
 import { eq, asc } from "drizzle-orm"
-import type { SQLiteTableWithColumns } from "drizzle-orm/sqlite-core"
-import type { SQLiteColumn } from "drizzle-orm/sqlite-core"
+import type { SQLiteTableWithColumns, SQLiteColumn  } from "drizzle-orm/sqlite-core"
 
 export function defineGetByIdHandler<T extends SQLiteTableWithColumns<any>>(
   table: T,

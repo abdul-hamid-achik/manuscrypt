@@ -110,3 +110,93 @@ describe("checkRateLimit", () => {
     }
   })
 })
+
+describe("setInterval cleanup", () => {
+  // The module must be imported AFTER fake timers are active so setInterval uses fake timers.
+  // We use vi.useFakeTimers() + vi.resetModules() + dynamic import to achieve this.
+
+  it("cleans up old entries after the cleanup interval fires", async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+
+    // Re-stub globals for the fresh module import
+    vi.stubGlobal("getRequestHeader", vi.fn())
+    vi.stubGlobal("createError", mockCreateError)
+
+    const { checkRateLimit: rl } = await import("../../../server/utils/rate-limit")
+    const event = createMockEvent("10.0.0.200")
+
+    // Fill up the rate limit with a large window so checkRateLimit won't filter them out
+    for (let i = 0; i < 3; i++) {
+      rl(event, { maxRequests: 3, windowMs: 600_000 })
+    }
+
+    // Should be rate-limited now (window is 600s, all timestamps within it)
+    expect(() => rl(event, { maxRequests: 3, windowMs: 600_000 })).toThrow()
+
+    // Advance 300s to trigger cleanup. Timestamps are 300s old (>120s) → cleaned.
+    vi.advanceTimersByTime(300_000)
+
+    // After cleanup, entries removed → requests allowed again
+    expect(() => rl(event, { maxRequests: 3, windowMs: 600_000 })).not.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it("partially cleans entries — keeps recent, removes old", async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+
+    vi.stubGlobal("getRequestHeader", vi.fn())
+    vi.stubGlobal("createError", mockCreateError)
+
+    const { checkRateLimit: rl } = await import("../../../server/utils/rate-limit")
+    const event = createMockEvent("10.0.0.201")
+
+    // Add 2 requests at t=0
+    rl(event, { maxRequests: 5, windowMs: 600_000 })
+    rl(event, { maxRequests: 5, windowMs: 600_000 })
+
+    // Advance to t=250s — add 1 more request
+    vi.advanceTimersByTime(250_000)
+    rl(event, { maxRequests: 5, windowMs: 600_000 })
+
+    // Advance 50s more to trigger cleanup at t=300s
+    vi.advanceTimersByTime(50_000)
+
+    // Cleanup: requests at t=0 are 300s old (>120s) → removed.
+    // Request at t=250s is 50s old (<120s) → kept.
+    // With windowMs=600_000, the surviving request is within the window.
+    // 5 max - 1 remaining = 4 more allowed
+    for (let i = 0; i < 4; i++) {
+      expect(() => rl(event, { maxRequests: 5, windowMs: 600_000 })).not.toThrow()
+    }
+    expect(() => rl(event, { maxRequests: 5, windowMs: 600_000 })).toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it("deletes map entry entirely when all timestamps are old", async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+
+    vi.stubGlobal("getRequestHeader", vi.fn())
+    vi.stubGlobal("createError", mockCreateError)
+
+    const { checkRateLimit: rl } = await import("../../../server/utils/rate-limit")
+    const event = createMockEvent("10.0.0.202")
+
+    // Add a request at t=0
+    rl(event, { maxRequests: 3, windowMs: 600_000 })
+
+    // Advance 300s to trigger cleanup — timestamp at t=0 is 300s old (>120s) → deleted
+    vi.advanceTimersByTime(300_000)
+
+    // Slate is clean — all 3 requests should work
+    for (let i = 0; i < 3; i++) {
+      expect(() => rl(event, { maxRequests: 3, windowMs: 600_000 })).not.toThrow()
+    }
+
+    vi.useRealTimers()
+  })
+})

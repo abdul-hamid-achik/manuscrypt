@@ -1,66 +1,19 @@
 import { describe, it, expect } from "vitest"
-import { z } from "zod"
-
-/**
- * Zod schemas extracted from AI endpoint files.
- * We recreate them here to test validation logic without needing a running server.
- */
-
-// From server/api/ai/style-analyze.post.ts
-const styleAnalyzeSchema = z.object({
-  text: z
-    .string()
-    .min(100, "Please provide at least 100 characters of text to analyze")
-    .max(50000, "Text must not exceed 50,000 characters"),
-  bookId: z.string().optional(),
-})
-
-// From server/api/ai/stream.post.ts
-const streamSchema = z.object({
-  bookId: z.string(),
-  chapterId: z.string().optional(),
-  messages: z.array(
-    z.object({
-      role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    }),
-  ),
-  command: z.string().optional(),
-  selectedText: z.string().optional(),
-})
-
-// From server/api/ai/interview.post.ts
-const interviewSchema = z.object({
-  bookId: z.string(),
-  characterId: z.string(),
-  message: z.string().min(1, "message must not be empty"),
-  history: z.array(
-    z.object({
-      role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    }),
-  ),
-})
-
-// From server/api/ai/review.post.ts
-const reviewSchema = z.object({
-  chapterId: z.string(),
-})
-
-// From server/api/ai/messages/index.post.ts
-const messagesPostSchema = z.object({
-  bookId: z.string(),
-  role: z.enum(["user", "assistant"]),
-  content: z.string().min(1, "content must not be empty"),
-  sessionType: z.string(),
-  sessionId: z.string(),
-  chapterId: z.string().optional(),
-  characterId: z.string().optional(),
-})
+import {
+  aiStyleAnalyzeSchema,
+  aiStreamSchema,
+  aiInterviewSchema,
+  aiReviewSchema,
+  aiMessageSchema,
+  createRelationshipSchema,
+  exportSchema,
+  reorderSchema,
+  createWritingSessionSchema,
+} from "../../../server/utils/validation"
 
 describe("style-analyze schema", () => {
   it("accepts valid input", () => {
-    const result = styleAnalyzeSchema.safeParse({
+    const result = aiStyleAnalyzeSchema.safeParse({
       text: "A".repeat(100),
       bookId: "book-123",
     })
@@ -68,14 +21,14 @@ describe("style-analyze schema", () => {
   })
 
   it("accepts text without bookId", () => {
-    const result = styleAnalyzeSchema.safeParse({
+    const result = aiStyleAnalyzeSchema.safeParse({
       text: "A".repeat(200),
     })
     expect(result.success).toBe(true)
   })
 
   it("rejects text under 100 chars", () => {
-    const result = styleAnalyzeSchema.safeParse({
+    const result = aiStyleAnalyzeSchema.safeParse({
       text: "Short text",
     })
     expect(result.success).toBe(false)
@@ -85,7 +38,7 @@ describe("style-analyze schema", () => {
   })
 
   it("rejects text over 50000 chars", () => {
-    const result = styleAnalyzeSchema.safeParse({
+    const result = aiStyleAnalyzeSchema.safeParse({
       text: "A".repeat(50001),
     })
     expect(result.success).toBe(false)
@@ -95,19 +48,19 @@ describe("style-analyze schema", () => {
   })
 
   it("rejects missing text field", () => {
-    const result = styleAnalyzeSchema.safeParse({})
+    const result = aiStyleAnalyzeSchema.safeParse({})
     expect(result.success).toBe(false)
   })
 
   it("rejects non-string text", () => {
-    const result = styleAnalyzeSchema.safeParse({ text: 12345 })
+    const result = aiStyleAnalyzeSchema.safeParse({ text: 12345 })
     expect(result.success).toBe(false)
   })
 })
 
 describe("stream schema", () => {
   it("accepts valid input", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
       messages: [{ role: "user", content: "Hello" }],
     })
@@ -115,7 +68,7 @@ describe("stream schema", () => {
   })
 
   it("accepts with optional fields", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
       chapterId: "ch-1",
       messages: [{ role: "user", content: "Hello" }],
@@ -126,21 +79,21 @@ describe("stream schema", () => {
   })
 
   it("rejects missing bookId", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       messages: [{ role: "user", content: "Hello" }],
     })
     expect(result.success).toBe(false)
   })
 
   it("rejects missing messages", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
     })
     expect(result.success).toBe(false)
   })
 
   it("rejects invalid role in messages", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
       messages: [{ role: "system", content: "Hello" }],
     })
@@ -148,7 +101,7 @@ describe("stream schema", () => {
   })
 
   it("rejects role other than user/assistant", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
       messages: [{ role: "admin", content: "Hello" }],
     })
@@ -156,7 +109,7 @@ describe("stream schema", () => {
   })
 
   it("accepts empty messages array", () => {
-    const result = streamSchema.safeParse({
+    const result = aiStreamSchema.safeParse({
       bookId: "book-1",
       messages: [],
     })
@@ -166,7 +119,7 @@ describe("stream schema", () => {
 
 describe("interview schema", () => {
   it("accepts valid input", () => {
-    const result = interviewSchema.safeParse({
+    const result = aiInterviewSchema.safeParse({
       bookId: "book-1",
       characterId: "char-1",
       message: "Tell me about yourself",
@@ -176,7 +129,7 @@ describe("interview schema", () => {
   })
 
   it("accepts with history", () => {
-    const result = interviewSchema.safeParse({
+    const result = aiInterviewSchema.safeParse({
       bookId: "book-1",
       characterId: "char-1",
       message: "What do you fear?",
@@ -189,7 +142,7 @@ describe("interview schema", () => {
   })
 
   it("rejects empty message", () => {
-    const result = interviewSchema.safeParse({
+    const result = aiInterviewSchema.safeParse({
       bookId: "book-1",
       characterId: "char-1",
       message: "",
@@ -199,7 +152,7 @@ describe("interview schema", () => {
   })
 
   it("rejects missing characterId", () => {
-    const result = interviewSchema.safeParse({
+    const result = aiInterviewSchema.safeParse({
       bookId: "book-1",
       message: "Hello",
       history: [],
@@ -208,7 +161,7 @@ describe("interview schema", () => {
   })
 
   it("rejects invalid role in history", () => {
-    const result = interviewSchema.safeParse({
+    const result = aiInterviewSchema.safeParse({
       bookId: "book-1",
       characterId: "char-1",
       message: "Hello",
@@ -220,40 +173,37 @@ describe("interview schema", () => {
 
 describe("review schema", () => {
   it("accepts valid input", () => {
-    const result = reviewSchema.safeParse({ chapterId: "ch-1" })
+    const result = aiReviewSchema.safeParse({ chapterId: "ch-1" })
     expect(result.success).toBe(true)
   })
 
   it("rejects missing chapterId", () => {
-    const result = reviewSchema.safeParse({})
+    const result = aiReviewSchema.safeParse({})
     expect(result.success).toBe(false)
   })
 
   it("rejects non-string chapterId", () => {
-    const result = reviewSchema.safeParse({ chapterId: 123 })
+    const result = aiReviewSchema.safeParse({ chapterId: 123 })
     expect(result.success).toBe(false)
   })
 })
 
 describe("messages POST schema", () => {
   it("accepts valid input", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: "book-1",
       role: "user",
       content: "Hello world",
-      sessionType: "chat",
-      sessionId: "sess-1",
+      command: "chat",
     })
     expect(result.success).toBe(true)
   })
 
   it("accepts with optional fields", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: "book-1",
       role: "assistant",
       content: "Response",
-      sessionType: "chat",
-      sessionId: "sess-1",
       chapterId: "ch-1",
       characterId: "char-1",
     })
@@ -261,29 +211,25 @@ describe("messages POST schema", () => {
   })
 
   it("rejects invalid role", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: "book-1",
       role: "system",
       content: "Hello",
-      sessionType: "chat",
-      sessionId: "sess-1",
     })
     expect(result.success).toBe(false)
   })
 
   it("rejects empty content", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: "book-1",
       role: "user",
       content: "",
-      sessionType: "chat",
-      sessionId: "sess-1",
     })
     expect(result.success).toBe(false)
   })
 
   it("rejects missing required fields", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: "book-1",
       role: "user",
     })
@@ -291,12 +237,170 @@ describe("messages POST schema", () => {
   })
 
   it("rejects wrong types", () => {
-    const result = messagesPostSchema.safeParse({
+    const result = aiMessageSchema.safeParse({
       bookId: 123,
       role: "user",
       content: "Hello",
-      sessionType: "chat",
-      sessionId: "sess-1",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("createRelationshipSchema", () => {
+  it("accepts valid relationship", () => {
+    const result = createRelationshipSchema.safeParse({
+      bookId: "book-1",
+      fromCharacterId: "char-1",
+      toCharacterId: "char-2",
+      relationshipType: "sibling",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts with optional description", () => {
+    const result = createRelationshipSchema.safeParse({
+      bookId: "book-1",
+      fromCharacterId: "char-1",
+      toCharacterId: "char-2",
+      relationshipType: "rival",
+      description: "They compete for the throne",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects self-relationship (fromCharacterId === toCharacterId)", () => {
+    const result = createRelationshipSchema.safeParse({
+      bookId: "book-1",
+      fromCharacterId: "char-1",
+      toCharacterId: "char-1",
+      relationshipType: "friend",
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain("cannot have a relationship with itself")
+    }
+  })
+
+  it("rejects missing required fields", () => {
+    const result = createRelationshipSchema.safeParse({
+      bookId: "book-1",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects empty relationshipType", () => {
+    const result = createRelationshipSchema.safeParse({
+      bookId: "book-1",
+      fromCharacterId: "char-1",
+      toCharacterId: "char-2",
+      relationshipType: "",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("exportSchema", () => {
+  it("accepts valid bookId", () => {
+    const result = exportSchema.safeParse({ bookId: "book-123" })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects empty bookId", () => {
+    const result = exportSchema.safeParse({ bookId: "" })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain("bookId is required")
+    }
+  })
+
+  it("rejects missing bookId", () => {
+    const result = exportSchema.safeParse({})
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects non-string bookId", () => {
+    const result = exportSchema.safeParse({ bookId: 42 })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("reorderSchema", () => {
+  it("accepts valid non-negative integer", () => {
+    const result = reorderSchema.safeParse({ newOrder: 3 })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts zero", () => {
+    const result = reorderSchema.safeParse({ newOrder: 0 })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects negative number", () => {
+    const result = reorderSchema.safeParse({ newOrder: -1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain("newOrder must be >= 0")
+    }
+  })
+
+  it("rejects non-integer", () => {
+    const result = reorderSchema.safeParse({ newOrder: 1.5 })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects string", () => {
+    const result = reorderSchema.safeParse({ newOrder: "abc" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects missing newOrder", () => {
+    const result = reorderSchema.safeParse({})
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("createWritingSessionSchema", () => {
+  it("accepts valid input with all fields", () => {
+    const result = createWritingSessionSchema.safeParse({
+      bookId: "book-1",
+      chapterId: "ch-1",
+      wordsWritten: 500,
+      duration: 3600,
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts with only bookId", () => {
+    const result = createWritingSessionSchema.safeParse({
+      bookId: "book-1",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects missing bookId", () => {
+    const result = createWritingSessionSchema.safeParse({})
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects empty bookId", () => {
+    const result = createWritingSessionSchema.safeParse({ bookId: "" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects negative wordsWritten", () => {
+    const result = createWritingSessionSchema.safeParse({
+      bookId: "book-1",
+      wordsWritten: -10,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects non-integer duration", () => {
+    const result = createWritingSessionSchema.safeParse({
+      bookId: "book-1",
+      duration: 3.5,
     })
     expect(result.success).toBe(false)
   })

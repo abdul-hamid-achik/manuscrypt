@@ -45,3 +45,26 @@
   font-size: 1.125rem;
   line-height: 1.8;
 }
+
+/* Search and replace highlights */
+.search-match {
+  background-color: #fde68a;
+  border-radius: 2px;
+}
+
+.search-match-active {
+  background-color: #f59e0b;
+  color: white;
+  border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .search-match {
+    background-color: #78350f;
+  }
+
+  .search-match-active {
+    background-color: #d97706;
+    color: white;
+  }
+}

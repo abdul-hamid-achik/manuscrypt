@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 
+import { callAnthropicJson } from "../../../server/utils/ai-stream"
+
 // Mock Nitro auto-imports used by ai-stream.ts
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
   const err = new Error(opts.message) as any
@@ -11,8 +13,6 @@ vi.stubGlobal("useRuntimeConfig", () => ({
   anthropicFastModel: "test-fast",
   anthropicSmartModel: "test-smart",
 }))
-
-import { callAnthropicJson } from "../../../server/utils/ai-stream"
 
 describe("AI Style Analysis", () => {
   it("validates minimum text length requirement", () => {

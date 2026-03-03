@@ -58,7 +58,7 @@ bun run db:studio        # Open Drizzle Studio GUI
 
 **AI Streaming:** Server uses `H3 EventStream` via `server/utils/ai-stream.ts`. Client consumes SSE via custom parser in `app/utils/sse.ts`. The `useAiAssistant` composable manages sessions keyed by `"interview:{bookId}:{characterId}"` or `"general:{bookId}"`.
 
-**Context-Aware AI:** `server/utils/ai-prompts.ts` builds full book context (characters, locations, relationships, neighboring chapter synopses, current content) passed as system prompts to Claude. Commands: `continue`, `deepen`, `dialogue`, `action`, `character-voice`.
+**Context-Aware AI:** `server/utils/ai-prompts.ts` builds full book context (characters, locations, relationships, neighboring chapter synopses, current content) passed as system prompts to Claude. Commands: `continue`, `deepen`, `dialogue`, `sensory`, `action`.
 
 **Editor Draft Safety:** TipTap editor auto-saves to localStorage every 2s and debounce-saves to server every 1s. Recovery modal appears on reload if a newer draft exists in localStorage.
 

@@ -1,4 +1,4 @@
-import type { Chapter, Scene, CreateChapterInput, CreateSceneInput, UpdateSceneInput } from '~~/shared/types'
+import type { Chapter, Scene, CreateSceneInput, UpdateSceneInput } from '~~/shared/types'
 
 export function useOutline(bookId: MaybeRef<string>) {
   const { data: chapters, refresh: refreshChapters, status } = useChapters(bookId)
@@ -26,7 +26,7 @@ export function useOutline(bookId: MaybeRef<string>) {
   const totalChapters = computed(() => chapters.value?.length ?? 0)
 
   async function addChapter(act: number) {
-    const actChapters = chaptersByAct.value[act] ?? []
+    const _actChapters = chaptersByAct.value[act] ?? []
     const maxSort = chapters.value?.reduce((max, ch) => Math.max(max, ch.sortOrder), 0) ?? 0
     const nextNumber = (chapters.value?.length ?? 0) + 1
 
