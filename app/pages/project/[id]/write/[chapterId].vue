@@ -43,11 +43,16 @@ const nextChapterId = useState<string | null>("writingNextChapterId", () => null
 const prevChapterTitle = useState<string>("writingPrevChapterTitle", () => "")
 const nextChapterTitle = useState<string>("writingNextChapterTitle", () => "")
 
+function getChapterLabel(chapter: Chapter | null) {
+  if (!chapter) return ""
+  return chapter.title || `Chapter ${chapter.number}`
+}
+
 watchEffect(() => {
   prevChapterId.value = prevChapter.value?.id ?? null
   nextChapterId.value = nextChapter.value?.id ?? null
-  prevChapterTitle.value = prevChapter.value?.title || `Chapter ${prevChapter.value?.number}`
-  nextChapterTitle.value = nextChapter.value?.title || `Chapter ${nextChapter.value?.number}`
+  prevChapterTitle.value = getChapterLabel(prevChapter.value)
+  nextChapterTitle.value = getChapterLabel(nextChapter.value)
 })
 
 const editorRef = ref<WritingEditorHandle | null>(null)
