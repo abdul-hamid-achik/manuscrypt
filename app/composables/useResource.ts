@@ -1,6 +1,6 @@
 export function createResourceComposable<
-  TCreate extends Record<string, any>,
-  TUpdate extends Record<string, any>,
+  TCreate extends Record<string, unknown>,
+  TUpdate extends Record<string, unknown>,
   TEntity,
 >(basePath: string, options: { parentQueryParam?: string } = {}) {
   const { parentQueryParam } = options
@@ -23,11 +23,11 @@ export function createResourceComposable<
   }
 
   function update(id: string, data: TUpdate) {
-    return $fetch<TEntity>(`${basePath}/${id}` as string, { method: 'PUT', body: data })
+    return $fetch<TEntity>(`${basePath}/${id}`, { method: 'PUT', body: data })
   }
 
   function remove(id: string) {
-    return $fetch(`${basePath}/${id}` as string, { method: 'DELETE' })
+    return $fetch(`${basePath}/${id}`, { method: 'DELETE' })
   }
 
   return { useList, useOne, create, update, remove }

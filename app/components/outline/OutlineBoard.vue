@@ -23,14 +23,14 @@ const { data: locationsRaw } = useLocations(props.bookId)
 
 const characterMap = computed(() => {
   const map = new Map<string, string>()
-  const list = (charactersRaw.value as any[] | null) ?? []
+  const list = charactersRaw.value ?? []
   for (const c of list) map.set(c.id, c.name)
   return map
 })
 
 const locationMap = computed(() => {
   const map = new Map<string, string>()
-  const list = (locationsRaw.value as any[] | null) ?? []
+  const list = locationsRaw.value ?? []
   for (const l of list) map.set(l.id, l.name)
   return map
 })
@@ -184,16 +184,43 @@ async function onActDrop(e: DragEvent, actNum: number) {
   if (filtered.length === 0) {
     newSortOrder = 1
   } else if (insertIndex === 0) {
-    newSortOrder = filtered[0]!.sortOrder - 1
+    if (filtered[0]!.sortOrder === 0) {
+      const reordered = [chapter, ...filtered]
+      await Promise.all(
+        reordered.map((reorderedChapter, index) => {
+          const sortOrder = (index + 1) * 10
+          if (reorderedChapter.id === chapter.id) {
+            newSortOrder = sortOrder
+            return null
+          }
+          return reorderChapter(reorderedChapter.id, sortOrder)
+        }),
+      )
+    } else {
+      newSortOrder = filtered[0]!.sortOrder - 1
+    }
   } else if (insertIndex >= filtered.length) {
     newSortOrder = filtered[filtered.length - 1]!.sortOrder + 1
   } else {
     const before = filtered[insertIndex - 1]!.sortOrder
     const after = filtered[insertIndex]!.sortOrder
-    newSortOrder = Math.round((before + after) / 2)
-    // If we'd collide, shift to halfway with decimals
-    if (newSortOrder === before || newSortOrder === after) {
-      newSortOrder = (before + after) / 2
+    const midpoint = Math.floor((before + after) / 2)
+
+    if (midpoint > before) {
+      newSortOrder = midpoint
+    } else {
+      const reordered = [...filtered]
+      reordered.splice(insertIndex, 0, chapter as Chapter)
+      await Promise.all(
+        reordered.map((_chapter, index) => {
+          const sortOrder = (index + 1) * 10
+          if (_chapter.id === chapter.id) {
+            newSortOrder = sortOrder
+            return null
+          }
+          return reorderChapter(_chapter.id, sortOrder)
+        }),
+      )
     }
   }
 

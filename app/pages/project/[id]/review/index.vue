@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Chapter } from '~~/shared/types'
+import type { Chapter, ChapterStatus } from '~~/shared/types'
 import { CHAPTER_STATUSES } from '~~/shared/types'
 
 definePageMeta({ layout: 'default' })
@@ -9,9 +9,13 @@ const id = route.params.id as string
 
 const { data: chapters, status, refresh } = useFetch<Chapter[]>(() => `/api/chapters?bookId=${id}`)
 
-const statusFilter = ref('')
-const statusOptions = ['', ...CHAPTER_STATUSES]
-const statusLabels: Record<string, string> = {
+type ChapterFilter = '' | ChapterStatus
+type ReviewBadgeColor = 'neutral' | 'info' | 'warning' | 'success'
+type ScoreBadgeColor = 'success' | 'warning' | 'error'
+
+const statusFilter = ref<ChapterFilter>('')
+const statusOptions: ChapterFilter[] = ['', ...CHAPTER_STATUSES]
+const statusLabels: Record<ChapterFilter, string> = {
   '': 'All',
   planned: 'Planned',
   outlined: 'Outlined',
@@ -20,21 +24,30 @@ const statusLabels: Record<string, string> = {
   done: 'Done',
 }
 
+const statusColorMap: Record<ChapterStatus, ReviewBadgeColor> = {
+  planned: 'neutral',
+  outlined: 'info',
+  drafting: 'warning',
+  revising: 'warning',
+  done: 'success',
+}
+
 const filteredChapters = computed(() => {
   const list = chapters.value ?? []
   if (!statusFilter.value) return list
   return list.filter((ch) => ch.status === statusFilter.value)
 })
 
-function statusColor(status: string | null): string {
-  const colors: Record<string, string> = {
-    planned: 'neutral',
-    outlined: 'info',
-    drafting: 'warning',
-    revising: 'violet',
-    done: 'success',
+function statusColor(status: string | null): ReviewBadgeColor {
+  if (!status) {
+    return 'neutral'
   }
-  return colors[status ?? 'planned'] || 'neutral'
+
+  if (Object.prototype.hasOwnProperty.call(statusColorMap, status)) {
+    return statusColorMap[status as ChapterStatus]
+  }
+
+  return 'neutral'
 }
 
 function formatStatus(status: string | null): string {
@@ -81,8 +94,20 @@ async function requestReview(chapterId: string) {
     })
     reviews.set(chapterId, result)
     expandedReviews.add(chapterId)
-  } catch (error: any) {
-    reviewErrors.set(chapterId, error?.data?.message || error?.message || 'Review failed')
+  } catch (error: unknown) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'data' in error &&
+      error.data &&
+      typeof error.data === 'object' &&
+      'message' in error.data &&
+      typeof error.data.message === 'string'
+    ) {
+      reviewErrors.set(chapterId, error.data.message)
+      return
+    }
+    reviewErrors.set(chapterId, error instanceof Error ? error.message : 'Review failed')
   } finally {
     reviewLoading.set(chapterId, false)
   }
@@ -96,7 +121,7 @@ function toggleReview(chapterId: string) {
   }
 }
 
-function scoreColor(score: number): string {
+function scoreColor(score: number): ScoreBadgeColor {
   if (score >= 7) return 'success'
   if (score >= 4) return 'warning'
   return 'error'
@@ -177,7 +202,7 @@ function scoreColor(score: number): string {
           </div>
 
           <!-- Status badge -->
-          <UBadge :color="statusColor(chapter.status) as any" variant="soft" size="sm" class="capitalize">
+          <UBadge :color="statusColor(chapter.status)" variant="soft" size="sm" class="capitalize">
             {{ formatStatus(chapter.status) }}
           </UBadge>
 
@@ -259,16 +284,16 @@ function scoreColor(score: number): string {
 
             <!-- Score Badges -->
             <div class="mb-4 flex flex-wrap gap-2">
-              <UBadge :color="scoreColor(reviews.get(chapter.id)!.proseQuality.score) as any" variant="soft" size="sm">
+              <UBadge :color="scoreColor(reviews.get(chapter.id)!.proseQuality.score)" variant="soft" size="sm">
                 Prose: {{ reviews.get(chapter.id)!.proseQuality.score }}/10
               </UBadge>
-              <UBadge :color="scoreColor(reviews.get(chapter.id)!.pacing.score) as any" variant="soft" size="sm">
+              <UBadge :color="scoreColor(reviews.get(chapter.id)!.pacing.score)" variant="soft" size="sm">
                 Pacing: {{ reviews.get(chapter.id)!.pacing.score }}/10
               </UBadge>
-              <UBadge :color="scoreColor(reviews.get(chapter.id)!.dialogue.score) as any" variant="soft" size="sm">
+              <UBadge :color="scoreColor(reviews.get(chapter.id)!.dialogue.score)" variant="soft" size="sm">
                 Dialogue: {{ reviews.get(chapter.id)!.dialogue.score }}/10
               </UBadge>
-              <UBadge :color="scoreColor(reviews.get(chapter.id)!.characterVoice.score) as any" variant="soft" size="sm">
+              <UBadge :color="scoreColor(reviews.get(chapter.id)!.characterVoice.score)" variant="soft" size="sm">
                 Character Voice: {{ reviews.get(chapter.id)!.characterVoice.score }}/10
               </UBadge>
             </div>

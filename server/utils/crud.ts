@@ -1,8 +1,8 @@
 import { db } from "../database"
 import { eq, asc } from "drizzle-orm"
-import type { SQLiteTableWithColumns, SQLiteColumn  } from "drizzle-orm/sqlite-core"
+import type { SQLiteTableWithColumns, SQLiteColumn } from "drizzle-orm/sqlite-core"
 
-export function defineGetByIdHandler<T extends SQLiteTableWithColumns<any>>(
+export function defineGetByIdHandler<T extends SQLiteTableWithColumns<Record<string, SQLiteColumn>>>(
   table: T,
   entityName: string,
 ) {
@@ -18,7 +18,7 @@ export function defineGetByIdHandler<T extends SQLiteTableWithColumns<any>>(
   })
 }
 
-export function defineDeleteByIdHandler<T extends SQLiteTableWithColumns<any>>(
+export function defineDeleteByIdHandler<T extends SQLiteTableWithColumns<Record<string, SQLiteColumn>>>(
   table: T,
   entityName: string,
 ) {
@@ -36,7 +36,7 @@ export function defineDeleteByIdHandler<T extends SQLiteTableWithColumns<any>>(
   })
 }
 
-export function defineListByParentHandler<T extends SQLiteTableWithColumns<any>>(
+export function defineListByParentHandler<T extends SQLiteTableWithColumns<Record<string, SQLiteColumn>>>(
   table: T,
   parentCol: SQLiteColumn,
   paramName: string,

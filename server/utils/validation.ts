@@ -1,7 +1,5 @@
 import { z } from "zod"
-import { CHAPTER_STATUSES } from "~~/shared/types"
-
-const BOOK_STATUSES = ["planning", "outlining", "drafting", "revising", "done"] as const
+import { BOOK_STATUSES, CHAPTER_STATUSES } from "~~/shared/types"
 const SCENE_STATUSES = CHAPTER_STATUSES
 
 // ── Books ──
@@ -143,6 +141,16 @@ export const createWritingSessionSchema = z.object({
   endedAt: z.string().optional(),
 })
 
+export const flushWritingSessionSchema = z.object({
+  id: z.string().optional(),
+  bookId: z.string().min(1, "bookId is required"),
+  chapterId: z.string().optional(),
+  wordsWritten: z.number().int().min(0).optional(),
+  duration: z.number().int().min(0).optional(),
+  startedAt: z.string().optional(),
+  endedAt: z.string().min(1).optional(),
+})
+
 // ── Content Snapshots ──
 export const createSnapshotSchema = z.object({
   chapterId: z.string().min(1, "chapterId is required"),
@@ -197,8 +205,31 @@ export const aiMessageSchema = z.object({
 })
 
 // ── AI Outline Generation ──
+const outlineSceneSchema = z.object({
+  title: z.string().min(1).max(500),
+  synopsis: z.string().max(10_000).optional(),
+  povCharacterName: z.string().max(500).optional(),
+  locationName: z.string().max(500).optional(),
+  moodStart: z.string().max(200).optional(),
+  moodEnd: z.string().max(200).optional(),
+})
+
+const outlineChapterSchema = z.object({
+  number: z.number().int().min(1, "Chapter number must be at least 1"),
+  title: z.string().min(1).max(500),
+  synopsis: z.string().max(10_000).optional(),
+  act: z.number().int().min(1).max(5),
+  scenes: z.array(outlineSceneSchema).optional(),
+})
+
+const outlinePayloadSchema = z.object({
+  chapters: z.array(outlineChapterSchema),
+})
+
 export const generateOutlineSchema = z.object({
   bookId: z.string().min(1, "bookId is required"),
+  mode: z.enum(["preview", "append", "replace"]).default("append"),
+  outline: outlinePayloadSchema.optional(),
 })
 
 // ── Export ──

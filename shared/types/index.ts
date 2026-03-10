@@ -1,11 +1,13 @@
 export const CHAPTER_STATUSES = ['planned', 'outlined', 'drafting', 'revising', 'done'] as const
 export type ChapterStatus = typeof CHAPTER_STATUSES[number]
+export const BOOK_STATUSES = ['planning', 'outlining', 'drafting', 'revising', 'done'] as const
+export type BookStatus = typeof BOOK_STATUSES[number]
 
 export interface TipTapNode {
   type: string
   text?: string
-  attrs?: Record<string, any>
-  marks?: Array<{ type: string; attrs?: Record<string, any> }>
+  attrs?: Record<string, unknown>
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>
   content?: TipTapNode[]
 }
 
@@ -15,7 +17,7 @@ export interface Book {
   genre: string | null
   premise: string | null
   targetWordCount: number | null
-  status: string | null
+  status: BookStatus | string | null
   styleGuide: string | null
   createdAt: string | null
   updatedAt: string | null

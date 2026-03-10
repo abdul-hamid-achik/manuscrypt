@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ContentSnapshot } from "~~/shared/types"
+import type { ContentSnapshot, TipTapNode } from "~~/shared/types"
 
 const props = defineProps<{
   chapterId: string
@@ -28,11 +28,11 @@ async function selectSnapshot(snapshot: ContentSnapshot) {
   }
 }
 
-function extractText(node: any): string {
+function extractText(node: TipTapNode | null): string {
   if (!node) return ""
   if (node.text) return node.text
   if (node.content) {
-    return node.content.map((child: any) => extractText(child)).join(node.type === "paragraph" ? "\n\n" : "")
+    return node.content.map((child) => extractText(child)).join(node.type === "paragraph" ? "\n\n" : "")
   }
   return ""
 }

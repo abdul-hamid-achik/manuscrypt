@@ -106,7 +106,7 @@ describe("tiptapJsonToText", () => {
 
 describe("extractText", () => {
   it("returns empty string for falsy node", () => {
-    expect(extractText(null as any)).toBe("")
+    expect(extractText(null)).toBe("")
   })
 
   it("extracts text from a text node", () => {

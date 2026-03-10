@@ -41,7 +41,9 @@ const confirmDelete = ref(false)
 const editingScene = ref<Scene | undefined>()
 const showSceneForm = ref(false)
 
-const statusConfig: Record<string, { color: string; label: string }> = {
+type ChapterBadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'primary'
+
+const statusConfig: Record<string, { color: ChapterBadgeColor; label: string }> = {
   planned: { color: 'neutral', label: 'Planned' },
   outlined: { color: 'info', label: 'Outlined' },
   drafting: { color: 'primary', label: 'Drafting' },
@@ -78,7 +80,7 @@ async function toggleExpand() {
 }
 
 async function addScene() {
-  const nextOrder = scenes.value.length + 1
+  const nextOrder = scenes.value.reduce((max, scene) => Math.max(max, scene.sortOrder), 0) + 1
   try {
     const scene = await $fetch<Scene>('/api/scenes', {
       method: 'POST',
@@ -196,7 +198,7 @@ function onSceneCancelled() {
           <h3 class="font-semibold text-(--ui-text-highlighted) truncate">
             {{ chapter.title }}
           </h3>
-          <UBadge :color="chapterStatus.color as any" variant="soft" size="sm">
+          <UBadge :color="chapterStatus.color" variant="soft" size="sm">
             {{ chapterStatus.label }}
           </UBadge>
         </div>

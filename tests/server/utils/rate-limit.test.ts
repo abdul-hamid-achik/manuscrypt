@@ -77,7 +77,7 @@ describe("checkRateLimit", () => {
   })
 
   it("reads IP from x-forwarded-for header", () => {
-    mockGetRequestHeader.mockImplementation((_event: any, header: string) => {
+    mockGetRequestHeader.mockImplementation((_event: unknown, header: string) => {
       if (header === "x-forwarded-for") return "203.0.113.1, 10.0.0.1"
       return undefined
     })
@@ -90,7 +90,7 @@ describe("checkRateLimit", () => {
   })
 
   it("reads IP from x-real-ip header when x-forwarded-for is absent", () => {
-    mockGetRequestHeader.mockImplementation((_event: any, header: string) => {
+    mockGetRequestHeader.mockImplementation((_event: unknown, header: string) => {
       if (header === "x-real-ip") return "203.0.113.2"
       return undefined
     })

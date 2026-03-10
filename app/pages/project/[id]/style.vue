@@ -10,10 +10,47 @@ const { isAnalyzing, analysis, error, analyze, reset } = useStyleAnalysis()
 const { data: book, refresh: refreshBook } = useBook(projectId)
 
 const canAnalyze = computed(() => sampleText.value.trim().length >= 100)
+const hasExistingGuide = computed(() => Boolean(book.value?.styleGuide?.trim()))
+const saveMode = ref<'replace' | 'append' | 'prepend'>('append')
+
+const saveModeOptions = [
+  { label: 'Replace existing style guide', value: 'replace' },
+  { label: 'Append new analysis to existing guide', value: 'append' },
+  { label: 'Prepend new analysis before existing guide', value: 'prepend' },
+]
+
+const analysisSummary = computed(() => {
+  if (!analysis.value) return ''
+  return [
+    `Tone: ${analysis.value.toneDescription}`,
+    `Pace: ${analysis.value.paceDescription}`,
+    `Avg sentence length: ${analysis.value.sentenceLengthAvg.toFixed(1)} words`,
+    `Dialogue ratio: ${(analysis.value.dialogueRatio * 100).toFixed(0)}%`,
+    `Strengths: ${analysis.value.strengths.join('; ')}`,
+    `Comparable authors: ${analysis.value.comparableAuthors.join(', ')}`,
+  ].join('\n')
+})
+
+const mergedStyleGuide = computed(() => {
+  const base = book.value?.styleGuide?.trim() ?? ''
+  if (!analysisSummary.value) return base
+  if (!base) return analysisSummary.value
+
+  if (saveMode.value === 'append') {
+    return `${base}\n\n${analysisSummary.value}`
+  }
+  if (saveMode.value === 'prepend') {
+    return `${analysisSummary.value}\n\n${base}`
+  }
+  return analysisSummary.value
+})
+
+const isOverwriteWarning = computed(() => hasExistingGuide.value && saveMode.value === 'replace')
+const isLengthLimitExceeded = computed(() => mergedStyleGuide.value.length > 50_000)
 
 async function handleAnalyze() {
   if (!canAnalyze.value) return
-  await analyze(sampleText.value.trim())
+  await analyze(sampleText.value.trim(), projectId)
 }
 
 function handleReset() {
@@ -22,23 +59,15 @@ function handleReset() {
 }
 
 async function saveToStyleGuide() {
-  if (!analysis.value) return
-  const summary = [
-    `Tone: ${analysis.value.toneDescription}`,
-    `Pace: ${analysis.value.paceDescription}`,
-    `Avg sentence length: ${analysis.value.sentenceLengthAvg.toFixed(1)} words`,
-    `Dialogue ratio: ${(analysis.value.dialogueRatio * 100).toFixed(0)}%`,
-    `Strengths: ${analysis.value.strengths.join('; ')}`,
-    `Comparable authors: ${analysis.value.comparableAuthors.join(', ')}`,
-  ].join('\n')
+  if (!analysis.value || isLengthLimitExceeded.value) return
 
   try {
     await $fetch(`/api/books/${projectId}` as string, {
       method: 'PUT',
-      body: { styleGuide: summary },
+      body: { styleGuide: mergedStyleGuide.value },
     })
     await refreshBook()
-    toast.add({ title: 'Style guide updated', description: 'Your AI assistant will now use this style when helping you write.', color: 'success' })
+    toast.add({ title: 'Style guide updated', description: 'Your AI writing assistant will now use this style when helping you write.', color: 'success' })
   } catch {
     toast.add({ title: 'Failed to save', description: 'Could not update the style guide.', color: 'error' })
   }
@@ -194,15 +223,31 @@ async function saveToStyleGuide() {
               Your AI writing assistant will use this analysis to match your style when helping you write.
             </p>
           </div>
-          <UButton
-            label="Save to Project"
-            icon="i-lucide-save"
-            variant="soft"
-            @click="saveToStyleGuide"
-          />
+          <div class="flex flex-col items-end gap-2">
+            <USelect
+              v-model="saveMode"
+              :items="saveModeOptions"
+              value-key="value"
+              class="w-72"
+              :disabled="!analysis"
+            />
+            <UButton
+              label="Save to Project"
+              icon="i-lucide-save"
+              variant="soft"
+              :disabled="!analysis || isLengthLimitExceeded"
+              @click="saveToStyleGuide"
+            />
+          </div>
         </div>
-        <p v-if="(book as any)?.styleGuide" class="mt-3 text-xs text-(--ui-text-dimmed) italic">
-          Current style guide is set. Saving will replace it.
+        <p v-if="isOverwriteWarning" class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          Replacing will overwrite the existing style guide.
+        </p>
+        <p v-if="isLengthLimitExceeded" class="mt-3 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          Merged style guide exceeds 50,000 characters.
+        </p>
+        <p class="mt-3 rounded border border-(--ui-border) bg-(--ui-bg) p-2 text-xs text-(--ui-text-muted) italic">
+          Preview: {{ mergedStyleGuide.slice(0, 120) }}<template v-if="mergedStyleGuide.length > 120">...</template>
         </p>
       </div>
     </div>

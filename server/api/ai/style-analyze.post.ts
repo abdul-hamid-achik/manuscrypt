@@ -1,5 +1,8 @@
 import { createAnthropicClient, callAnthropicJson } from "../../utils/ai-stream"
 import { checkRateLimit } from "../../utils/rate-limit"
+import { db } from "../../database"
+import { books } from "../../database/schema"
+import { eq } from "drizzle-orm"
 import { aiStyleAnalyzeSchema as bodySchema } from "../../utils/validation"
 
 export default defineEventHandler(async (event) => {
@@ -14,7 +17,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { text } = parsed.data
+  const { text, bookId } = parsed.data
+  const styleContext = bookId
+    ? db.select({ styleGuide: books.styleGuide }).from(books).where(eq(books.id, bookId)).get()?.styleGuide
+    : null
 
   const anthropic = createAnthropicClient()
   const config = useRuntimeConfig()
@@ -34,7 +40,12 @@ export default defineEventHandler(async (event) => {
 
 Return ONLY valid JSON, no markdown code fences, no other text.`,
     messages: [
-      { role: "user", content: `Analyze the literary style of this text:\n\n${text}` },
+      {
+        role: "user",
+        content: styleContext
+          ? `Analyze the literary style of this text.\n\nUse this project style guide as additional context: ${styleContext}\n\n${text}`
+          : `Analyze the literary style of this text:\n\n${text}`,
+      },
     ],
     errorLabel: "style analysis",
   })

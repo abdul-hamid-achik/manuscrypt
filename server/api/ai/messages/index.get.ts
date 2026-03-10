@@ -6,6 +6,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const bookId = query.bookId as string | undefined
   const characterId = query.characterId as string | undefined
+  const chapterId = query.chapterId as string | undefined
 
   if (!bookId) {
     throw createError({ statusCode: 400, message: "bookId query param is required" })
@@ -15,6 +16,8 @@ export default defineEventHandler(async (event) => {
 
   if (characterId) {
     conditions.push(eq(aiMessages.characterId, characterId))
+  } else if (chapterId) {
+    conditions.push(eq(aiMessages.chapterId, chapterId))
   } else {
     conditions.push(isNull(aiMessages.characterId))
   }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { BOOK_STATUSES, type BookStatus } from '~~/shared/types'
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -17,7 +19,11 @@ const genres = [
   'Other',
 ]
 
-const statuses = ['planning', 'writing', 'editing', 'complete']
+const statuses = BOOK_STATUSES
+const statusOptions = statuses.map((status) => ({
+  label: status.charAt(0).toUpperCase() + status.slice(1),
+  value: status,
+}))
 
 const form = reactive({
   title: '',
@@ -25,7 +31,7 @@ const form = reactive({
   premise: '',
   targetWordCount: 80000,
   styleGuide: '',
-  status: 'planning',
+  status: statuses[0] as BookStatus,
 })
 
 const saving = ref(false)
@@ -36,13 +42,12 @@ watch(
   () => book.value,
   (b) => {
     if (!b) return
-    const data = b as any
-    form.title = data.title ?? ''
-    form.genre = data.genre ?? ''
-    form.premise = data.premise ?? ''
-    form.targetWordCount = data.targetWordCount ?? 80000
-    form.styleGuide = data.styleGuide ?? ''
-    form.status = data.status ?? 'planning'
+    form.title = b.title
+    form.genre = b.genre ?? ''
+    form.premise = b.premise ?? ''
+    form.targetWordCount = b.targetWordCount ?? 80000
+    form.styleGuide = b.styleGuide ?? ''
+    form.status = b.status ?? statuses[0]
   },
   { immediate: true },
 )
@@ -143,7 +148,7 @@ async function confirmDelete() {
       <UFormField label="Status">
         <USelect
           v-model="form.status"
-          :items="statuses.map(s => ({ label: s.charAt(0).toUpperCase() + s.slice(1), value: s }))"
+          :items="statusOptions"
           value-key="value"
           class="w-full"
         />

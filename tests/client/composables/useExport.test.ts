@@ -5,7 +5,9 @@ import { ref } from "vue"
 const mockToastAdd = vi.fn()
 vi.stubGlobal("useToast", () => ({ add: mockToastAdd }))
 vi.stubGlobal("$fetch", vi.fn())
-vi.stubGlobal("toValue", (v: any) => (typeof v === "object" && v !== null && "value" in v ? v.value : v))
+vi.stubGlobal("toValue", (v: unknown) =>
+  typeof v === "object" && v !== null && "value" in v ? (v as { value: string }).value : v,
+)
 vi.stubGlobal("ref", ref)
 vi.stubGlobal("MaybeRef", {})
 
@@ -21,8 +23,8 @@ vi.stubGlobal("document", {
 })
 vi.stubGlobal(
   "Blob",
-  class MockBlob {
-    constructor(public parts: any[], public opts: any) {}
+class MockBlob {
+    constructor(public parts: ReadonlyArray<unknown>, public opts: BlobPropertyBag) {}
   }
 )
 
@@ -111,7 +113,7 @@ describe("useExport", () => {
 
     it("uses .txt extension instead of .md", async () => {
       const mockAnchor = { click: mockClick, href: "", download: "" }
-      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as any)
+      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as unknown as HTMLAnchorElement)
       vi.mocked($fetch).mockResolvedValueOnce({ markdown: "content", filename: "my-book.md" })
 
       const { exportPlainText } = useExport(bookId)
@@ -148,7 +150,7 @@ describe("useExport", () => {
 
     it("uses custom bookTitle for filename", async () => {
       const mockAnchor = { click: mockClick, href: "", download: "" }
-      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as any)
+      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as unknown as HTMLAnchorElement)
       vi.mocked($fetch).mockResolvedValueOnce(new ArrayBuffer(8))
 
       const { exportDocx } = useExport(bookId)
@@ -159,7 +161,7 @@ describe("useExport", () => {
 
     it("falls back to manuscript.docx when no title provided", async () => {
       const mockAnchor = { click: mockClick, href: "", download: "" }
-      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as any)
+      vi.mocked(document.createElement).mockReturnValueOnce(mockAnchor as unknown as HTMLAnchorElement)
       vi.mocked($fetch).mockResolvedValueOnce(new ArrayBuffer(8))
 
       const { exportDocx } = useExport(bookId)

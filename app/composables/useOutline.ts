@@ -26,16 +26,19 @@ export function useOutline(bookId: MaybeRef<string>) {
   const totalChapters = computed(() => chapters.value?.length ?? 0)
 
   async function addChapter(act: number) {
-    const _actChapters = chaptersByAct.value[act] ?? []
-    const maxSort = chapters.value?.reduce((max, ch) => Math.max(max, ch.sortOrder), 0) ?? 0
-    const nextNumber = (chapters.value?.length ?? 0) + 1
+    const nextSort = (chapters.value ?? [])
+      .reduce((max, ch) => Math.max(max, ch.sortOrder), 0) + 1
+    const nextNumber = Math.max(
+      0,
+      ...(chapters.value ?? []).map((ch) => ch.number),
+    ) + 1
 
     await createChapter({
       bookId: toValue(bookId),
       number: nextNumber,
       title: `Chapter ${nextNumber}`,
       act,
-      sortOrder: maxSort + 1,
+      sortOrder: nextSort,
     })
     await refreshChapters()
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Chapter, ChapterStatus } from '~~/shared/types'
+import type { Chapter, ChapterStatus, WritingSession } from '~~/shared/types'
 
 const route = useRoute()
 const projectId = route.params.id as string
@@ -7,23 +7,56 @@ const projectId = route.params.id as string
 const { data: chapters, status } = useFetch<Chapter[]>('/api/chapters', {
   query: { bookId: projectId },
 })
+const { data: writingSessions } = useFetch<WritingSession[]>(`/api/writing-sessions`, {
+  query: {
+    bookId: projectId,
+    limit: 20,
+  },
+})
 
 const sortedChapters = computed(() => {
   if (!chapters.value) return []
   return [...chapters.value].sort((a, b) => a.sortOrder - b.sortOrder)
 })
 
-// If there's a chapter in "drafting" status, highlight it
-const activeChapter = computed(() =>
-  sortedChapters.value.find((c) => c.status === 'drafting') ?? sortedChapters.value[0],
-)
+const resumeChapterId = computed(() => writingSessions.value?.find((s) => s.chapterId)?.chapterId ?? null)
+
+const statusPriority = {
+  drafting: 5,
+  revising: 4,
+  outlined: 3,
+  planned: 2,
+  done: 1,
+}
+
+const activeChapter = computed(() => {
+  if (!sortedChapters.value.length) return null
+
+  if (resumeChapterId.value) {
+    const fromSession = sortedChapters.value.find((chapter) => chapter.id === resumeChapterId.value && chapter.status !== 'done')
+    if (fromSession) return fromSession
+  }
+
+  const active = sortedChapters.value.filter((chapter) => chapter.status && chapter.status !== 'done')
+  if (!active.length) return sortedChapters.value[sortedChapters.value.length - 1]
+
+  const [topRanked] = [...active].sort((a, b) => {
+    const aRank = statusPriority[a.status as keyof typeof statusPriority] ?? 1
+    const bRank = statusPriority[b.status as keyof typeof statusPriority] ?? 1
+    if (aRank !== bRank) return bRank - aRank
+    return b.sortOrder - a.sortOrder
+  })
+
+  return topRanked
+})
 
 function statusColor(status: ChapterStatus | string) {
-  const map: Record<string, string> = {
+  type BadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'primary'
+  const map: Record<string, BadgeColor> = {
     planned: 'neutral',
     outlined: 'info',
     drafting: 'warning',
-    revising: 'violet',
+    revising: 'warning',
     done: 'success',
   }
   return map[status] ?? 'neutral'
@@ -72,7 +105,7 @@ function statusColor(status: ChapterStatus | string) {
           <span class="text-xs text-(--ui-text-dimmed)">
             {{ (chapter.wordCount ?? 0).toLocaleString() }} words
           </span>
-          <UBadge :color="statusColor(chapter.status ?? 'planned') as any" variant="subtle" size="xs" class="capitalize">
+          <UBadge :color="statusColor(chapter.status ?? 'planned')" variant="subtle" size="xs" class="capitalize">
             {{ chapter.status ?? 'planned' }}
           </UBadge>
         </div>

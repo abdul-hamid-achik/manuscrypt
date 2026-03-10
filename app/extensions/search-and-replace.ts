@@ -1,11 +1,17 @@
-import { Extension } from "@tiptap/core"
+import { Extension, type Editor } from "@tiptap/core"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import { Plugin, PluginKey } from "@tiptap/pm/state"
 import { Decoration, DecorationSet } from "@tiptap/pm/view"
+
+interface SearchMatch {
+  from: number
+  to: number
+}
 
 export interface SearchAndReplaceStorage {
   searchTerm: string
   replaceTerm: string
-  results: { from: number; to: number }[]
+  results: SearchMatch[]
   currentIndex: number
 }
 
@@ -24,14 +30,16 @@ declare module "@tiptap/core" {
 
 const searchAndReplacePluginKey = new PluginKey("searchAndReplace")
 
-function findMatches(doc: any, searchTerm: string): { from: number; to: number }[] {
+function findMatches(doc: ProseMirrorNode, searchTerm: string): SearchMatch[] {
   if (!searchTerm) return []
 
-  const results: { from: number; to: number }[] = []
+  const results: SearchMatch[] = []
   const term = searchTerm.toLowerCase()
 
-  doc.descendants((node: any, pos: number) => {
+  doc.descendants((node, pos) => {
     if (!node.isText) return
+    if (!node.text) return
+
     const text = node.text!.toLowerCase()
     let index = text.indexOf(term)
     while (index !== -1) {
@@ -43,7 +51,7 @@ function findMatches(doc: any, searchTerm: string): { from: number; to: number }
   return results
 }
 
-function scrollToMatch(editor: any, match: { from: number; to: number }) {
+function scrollToMatch(editor: Editor, match: SearchMatch) {
   try {
     const dom = editor.view.domAtPos(match.from)
     if (dom?.node) {
@@ -71,7 +79,7 @@ export const SearchAndReplace = Extension.create<Record<string, never>, SearchAn
     return {
       setSearchTerm:
         (term: string) =>
-        ({ editor }: any) => {
+        ({ editor }) => {
           editor.storage.searchAndReplace.searchTerm = term
           const results = findMatches(editor.state.doc, term)
           editor.storage.searchAndReplace.results = results
@@ -82,14 +90,14 @@ export const SearchAndReplace = Extension.create<Record<string, never>, SearchAn
 
       setReplaceTerm:
         (term: string) =>
-        ({ editor }: any) => {
+        ({ editor }) => {
           editor.storage.searchAndReplace.replaceTerm = term
           return true
         },
 
       findNext:
         () =>
-        ({ editor }: any) => {
+        ({ editor }) => {
           const storage = editor.storage.searchAndReplace
           if (storage.results.length === 0) return false
           storage.currentIndex = (storage.currentIndex + 1) % storage.results.length
@@ -101,7 +109,7 @@ export const SearchAndReplace = Extension.create<Record<string, never>, SearchAn
 
       findPrevious:
         () =>
-        ({ editor }: any) => {
+        ({ editor }) => {
           const storage = editor.storage.searchAndReplace
           if (storage.results.length === 0) return false
           storage.currentIndex =
@@ -114,7 +122,7 @@ export const SearchAndReplace = Extension.create<Record<string, never>, SearchAn
 
       replaceCurrent:
         () =>
-        ({ editor, chain }: any) => {
+        ({ editor, chain }) => {
           const storage = editor.storage.searchAndReplace
           if (storage.results.length === 0 || storage.currentIndex < 0) return false
 
@@ -137,13 +145,13 @@ export const SearchAndReplace = Extension.create<Record<string, never>, SearchAn
 
       replaceAll:
         () =>
-        ({ editor }: any) => {
+        ({ editor }) => {
           const storage = editor.storage.searchAndReplace
           if (storage.results.length === 0) return false
 
           // Replace from end to start to preserve positions
           const { tr } = editor.state
-          const sortedResults = [...storage.results].sort((a: any, b: any) => b.from - a.from)
+          const sortedResults = [...storage.results].sort((a, b) => b.from - a.from)
           for (const match of sortedResults) {
             tr.insertText(storage.replaceTerm, match.from, match.to)
           }

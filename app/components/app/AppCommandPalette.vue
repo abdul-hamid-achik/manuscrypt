@@ -10,8 +10,21 @@ const projectId = computed(() => {
   return match?.[1] ?? null
 })
 
+type PaletteItem = {
+  id: string
+  label: string
+  icon: string
+  to?: string
+}
+
+type PaletteGroup = {
+  id: string
+  label: string
+  items: PaletteItem[]
+}
+
 const groups = computed(() => {
-  const items: any[] = [
+  const items: PaletteGroup[] = [
     {
       id: 'navigation',
       label: 'Navigation',
@@ -52,7 +65,7 @@ const groups = computed(() => {
   return items
 })
 
-function onSelect(item: any) {
+function onSelect(item: PaletteItem) {
   open.value = false
   if (item.to) {
     router.push(item.to)

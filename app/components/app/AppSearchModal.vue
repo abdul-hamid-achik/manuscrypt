@@ -10,8 +10,20 @@ const projectId = computed(() => {
   return match?.[1] ?? null
 })
 
+interface ChapterSearchResult {
+  id: string
+  number: number
+  title: string
+  snippet?: string
+}
+
+interface HighlightSegment {
+  text: string
+  match: boolean
+}
+
 const searchQuery = ref('')
-const results = ref<any[]>([])
+const results = ref<ChapterSearchResult[]>([])
 const loading = ref(false)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -37,10 +49,10 @@ watch(open, (val) => {
 async function search(q: string) {
   if (!projectId.value) return
   try {
-    const data = await $fetch('/api/chapters/search', {
+    const data = await $fetch<ChapterSearchResult[]>('/api/chapters/search', {
       params: { bookId: projectId.value, q },
     })
-    results.value = data as any[]
+    results.value = data
   } catch {
     results.value = []
   } finally {
@@ -52,11 +64,31 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function highlightMatch(text: string) {
-  if (!searchQuery.value.trim()) return escapeHtml(text)
+function splitMatches(text: string): HighlightSegment[] {
+  const query = searchQuery.value.trim()
+  if (!query) return [{ text: escapeHtml(text), match: false }]
+
   const sanitized = escapeHtml(text)
-  const escaped = searchQuery.value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return sanitized.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>')
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
+  const segments: HighlightSegment[] = []
+
+  let lastIndex = 0
+  let match = regex.exec(sanitized)
+  while (match !== null) {
+    const start = match.index
+    const end = start + match[0].length
+    if (start > lastIndex) {
+      segments.push({ text: sanitized.slice(lastIndex, start), match: false })
+    }
+    segments.push({ text: sanitized.slice(start, end), match: true })
+    lastIndex = end
+    match = regex.exec(sanitized)
+  }
+  if (lastIndex < sanitized.length) {
+    segments.push({ text: sanitized.slice(lastIndex), match: false })
+  }
+  return segments
 }
 
 function goToChapter(chapterId: string) {
@@ -95,13 +127,22 @@ function goToChapter(chapterId: string) {
             >
               <div class="flex items-center gap-2">
                 <span class="text-xs font-mono text-(--ui-text-dimmed)">Ch. {{ result.number }}</span>
-                <span class="text-sm font-medium text-(--ui-text-highlighted)" v-html="highlightMatch(result.title)" />
+                <span class="text-sm font-medium text-(--ui-text-highlighted)">
+                  <template v-for="(segment, idx) in splitMatches(result.title)" :key="`title-${idx}`">
+                    <mark v-if="segment.match">{{ segment.text }}</mark>
+                    <span v-else>{{ segment.text }}</span>
+                  </template>
+                </span>
               </div>
               <p
                 v-if="result.snippet"
                 class="mt-1 text-xs text-(--ui-text-muted) line-clamp-2 [&_mark]:bg-yellow-300/40 [&_mark]:text-(--ui-text-highlighted) [&_mark]:rounded-sm"
-                v-html="highlightMatch(result.snippet)"
-              />
+              >
+                <template v-for="(segment, idx) in splitMatches(result.snippet)" :key="`snippet-${idx}`">
+                  <mark v-if="segment.match">{{ segment.text }}</mark>
+                  <span v-else>{{ segment.text }}</span>
+                </template>
+              </p>
             </button>
           </template>
 

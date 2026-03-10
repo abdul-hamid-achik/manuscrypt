@@ -59,14 +59,15 @@ function characterName(id: string): string {
 }
 
 const typeColor = computed(() => {
+  type RelationshipBadgeColor = 'neutral' | 'info' | 'warning' | 'error' | 'success'
   return (type: string) => {
-    const colors: Record<string, string> = {
+    const colors: Record<string, RelationshipBadgeColor> = {
       ally: 'success',
       rival: 'warning',
       family: 'info',
       romantic: 'error',
-      mentor: 'amber',
-      enemy: 'red',
+      mentor: 'warning',
+      enemy: 'error',
       friend: 'success',
       servant: 'neutral',
       ruler: 'neutral',
@@ -168,7 +169,7 @@ async function confirmDeleteRelationship() {
               {{ characterName(rel.toCharacterId) }}
             </span>
             <UBadge
-              :color="typeColor(rel.relationshipType) as any"
+              :color="typeColor(rel.relationshipType)"
               variant="subtle"
               size="sm"
               class="capitalize shrink-0"

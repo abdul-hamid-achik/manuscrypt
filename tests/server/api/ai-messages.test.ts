@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import type { H3Event } from "h3"
 import { createTestDb } from "../../setup/test-db"
 import { nanoid } from "nanoid"
 
@@ -25,6 +26,8 @@ const deleteHandler = (await import("../../../server/api/ai/messages/index.delet
 const BOOK_ID = "test-book-1"
 const CHAR_ID = "char-1"
 
+const mockEvent = (): H3Event => ({} as unknown as H3Event)
+
 beforeEach(() => {
   sqlite.exec("DELETE FROM ai_messages")
   sqlite.exec("DELETE FROM characters")
@@ -42,7 +45,7 @@ describe("POST /api/ai/messages", () => {
     }
     vi.mocked(readBody).mockResolvedValue(body)
 
-    const result = await postHandler({} as any)
+    const result = await postHandler(mockEvent())
     expect(result).toHaveProperty("id")
     expect(typeof result.id).toBe("string")
 
@@ -64,7 +67,7 @@ describe("POST /api/ai/messages", () => {
     }
     vi.mocked(readBody).mockResolvedValue(body)
 
-    const result = await postHandler({} as any)
+    const result = await postHandler(mockEvent())
     expect(result).toHaveProperty("id")
 
     const all = db.select().from(aiMessages).all()
@@ -79,7 +82,7 @@ describe("POST /api/ai/messages", () => {
       // missing role, content
     })
 
-    await expect(postHandler({} as any)).rejects.toThrow()
+    await expect(postHandler(mockEvent())).rejects.toThrow()
   })
 
   it("rejects empty content", async () => {
@@ -89,7 +92,7 @@ describe("POST /api/ai/messages", () => {
       content: "",
     })
 
-    await expect(postHandler({} as any)).rejects.toThrow()
+    await expect(postHandler(mockEvent())).rejects.toThrow()
   })
 
   it("rejects invalid role", async () => {
@@ -99,7 +102,7 @@ describe("POST /api/ai/messages", () => {
       content: "Hello",
     })
 
-    await expect(postHandler({} as any)).rejects.toThrow()
+    await expect(postHandler(mockEvent())).rejects.toThrow()
   })
 })
 
@@ -115,7 +118,7 @@ describe("GET /api/ai/messages", () => {
 
     vi.mocked(getQuery).mockReturnValue({ bookId: BOOK_ID })
 
-    const result = await getHandler({} as any)
+    const result = await getHandler(mockEvent())
     expect(result).toHaveLength(2)
     expect(result[0].content).toBe("Msg 1")
     expect(result[1].content).toBe("Msg 2")
@@ -137,7 +140,7 @@ describe("GET /api/ai/messages", () => {
 
     vi.mocked(getQuery).mockReturnValue({ bookId: BOOK_ID, characterId: "char-1" })
 
-    const result = await getHandler({} as any)
+    const result = await getHandler(mockEvent())
     expect(result).toHaveLength(1)
     expect(result[0].content).toBe("Character msg")
   })
@@ -158,7 +161,7 @@ describe("GET /api/ai/messages", () => {
 
     vi.mocked(getQuery).mockReturnValue({ bookId: BOOK_ID })
 
-    const result = await getHandler({} as any)
+    const result = await getHandler(mockEvent())
     expect(result).toHaveLength(1)
     expect(result[0].content).toBe("General msg")
   })
@@ -166,7 +169,7 @@ describe("GET /api/ai/messages", () => {
   it("throws 400 when bookId is missing", async () => {
     vi.mocked(getQuery).mockReturnValue({})
 
-    await expect(getHandler({} as any)).rejects.toThrow("bookId query param is required")
+    await expect(getHandler(mockEvent())).rejects.toThrow("bookId query param is required")
   })
 })
 
@@ -178,7 +181,7 @@ describe("DELETE /api/ai/messages", () => {
 
     vi.mocked(getQuery).mockReturnValue({ bookId: BOOK_ID })
 
-    const result = await deleteHandler({} as any)
+    const result = await deleteHandler(mockEvent())
     expect(result).toEqual({ success: true })
 
     const remaining = db.select().from(aiMessages).all()
@@ -201,7 +204,7 @@ describe("DELETE /api/ai/messages", () => {
 
     vi.mocked(getQuery).mockReturnValue({ bookId: BOOK_ID, characterId: "char-1" })
 
-    await deleteHandler({} as any)
+    await deleteHandler(mockEvent())
 
     const remaining = db.select().from(aiMessages).all()
     expect(remaining).toHaveLength(1)
@@ -211,6 +214,6 @@ describe("DELETE /api/ai/messages", () => {
   it("throws 400 when bookId is missing", async () => {
     vi.mocked(getQuery).mockReturnValue({})
 
-    await expect(deleteHandler({} as any)).rejects.toThrow("bookId query param is required")
+    await expect(deleteHandler(mockEvent())).rejects.toThrow("bookId query param is required")
   })
 })

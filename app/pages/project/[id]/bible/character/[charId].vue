@@ -28,9 +28,10 @@ const traits = computed(() => {
 })
 
 const roleColor = computed(() => {
-  const colors: Record<string, string> = {
-    protagonist: 'amber',
-    antagonist: 'red',
+  type RoleBadgeColor = 'neutral' | 'info' | 'warning' | 'error'
+  const colors: Record<string, RoleBadgeColor> = {
+    protagonist: 'warning',
+    antagonist: 'error',
     supporting: 'info',
     minor: 'neutral',
   }
@@ -104,7 +105,7 @@ async function confirmDelete() {
           <div class="mt-2 flex items-center gap-2">
             <UBadge
               v-if="char.role"
-              :color="roleColor as any"
+              :color="roleColor"
               variant="subtle"
               class="capitalize"
             >

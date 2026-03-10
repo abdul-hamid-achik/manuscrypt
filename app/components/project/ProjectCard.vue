@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { timeAgo } from '~/utils/format-date'
+import { BOOK_STATUSES } from '~~/shared/types'
 
 const props = defineProps<{
   book: {
@@ -15,13 +16,18 @@ const props = defineProps<{
 }>()
 
 const statusColor = computed(() => {
-  const colors: Record<string, string> = {
+  type BadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'primary'
+  const colors: Record<string, BadgeColor> = {
     planning: 'info',
-    writing: 'primary',
-    editing: 'warning',
-    complete: 'success',
+    outlining: 'primary',
+    drafting: 'warning',
+    revising: 'warning',
+    done: 'success',
   }
-  return colors[props.book.status ?? 'planning'] || 'neutral'
+  const normalizedStatus = BOOK_STATUSES.includes((props.book.status as (typeof BOOK_STATUSES)[number] | undefined) ?? BOOK_STATUSES[0])
+    ? (props.book.status as (typeof BOOK_STATUSES)[number])
+    : BOOK_STATUSES[0]
+  return colors[normalizedStatus] || 'neutral'
 })
 
 const chapterLabel = computed(() => {
@@ -58,7 +64,7 @@ const updatedLabel = computed(() => {
           <UBadge v-if="book.genre" variant="subtle" size="sm">
             {{ book.genre }}
           </UBadge>
-          <UBadge :color="statusColor as any" variant="soft" size="sm" class="capitalize">
+          <UBadge :color="statusColor" variant="soft" size="sm" class="capitalize">
             {{ book.status }}
           </UBadge>
         </div>

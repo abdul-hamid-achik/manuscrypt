@@ -12,7 +12,9 @@ const emit = defineEmits<{
   delete: [id: string]
 }>()
 
-const statusConfig: Record<string, { color: string; label: string }> = {
+type SceneBadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'primary'
+
+const statusConfig: Record<string, { color: SceneBadgeColor; label: string }> = {
   planned: { color: 'neutral', label: 'Planned' },
   outlined: { color: 'info', label: 'Outlined' },
   drafting: { color: 'primary', label: 'Drafting' },
@@ -41,7 +43,7 @@ const moodDisplay = computed(() => {
         <span class="text-sm font-medium text-(--ui-text-highlighted) truncate">
           {{ scene.title }}
         </span>
-        <UBadge :color="sceneStatus.color as any" variant="subtle" size="xs">
+        <UBadge :color="sceneStatus.color" variant="subtle" size="xs">
           {{ sceneStatus.label }}
         </UBadge>
       </div>

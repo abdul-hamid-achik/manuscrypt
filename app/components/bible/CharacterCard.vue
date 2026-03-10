@@ -7,9 +7,10 @@ defineProps<{
 
 const roleColor = computed(() => {
   return (role: string | null) => {
-    const colors: Record<string, string> = {
-      protagonist: 'amber',
-      antagonist: 'red',
+    type RoleBadgeColor = 'neutral' | 'info' | 'warning' | 'error'
+    const colors: Record<string, RoleBadgeColor> = {
+      protagonist: 'warning',
+      antagonist: 'error',
       supporting: 'info',
       minor: 'neutral',
     }
@@ -29,7 +30,7 @@ const roleColor = computed(() => {
         </h3>
         <UBadge
           v-if="character.role"
-          :color="roleColor(character.role) as any"
+          :color="roleColor(character.role)"
           variant="subtle"
           size="sm"
           class="capitalize shrink-0"

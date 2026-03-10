@@ -5,10 +5,11 @@ import {
   streamAnthropicResponse,
   callAnthropicJson,
 } from "../../../server/utils/ai-stream"
+import type { H3Event } from "h3"
 
 // Mock Nitro auto-imports
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
-  const err = new Error(opts.message) as any
+  const err = new Error(opts.message) as Error & { statusCode: number }
   err.statusCode = opts.statusCode
   return err
 })
@@ -47,8 +48,15 @@ describe("createAnthropicClient", () => {
       // Also verify statusCode
       try {
         createAnthropicClient()
-      } catch (err: any) {
-        expect(err.statusCode).toBe(500)
+      } catch (err: unknown) {
+        if (
+          err &&
+          typeof err === "object" &&
+          "statusCode" in err &&
+          typeof err.statusCode === "number"
+        ) {
+          expect(err.statusCode).toBe(500)
+        }
       }
     } finally {
       // Restore default
@@ -84,6 +92,8 @@ describe("streamAnthropicResponse", () => {
     return { pushes, mockEventStream }
   }
 
+  const mockEvent = () => ({} as unknown as H3Event)
+
   it("pushes text delta events correctly", async () => {
     const { pushes, mockEventStream } = setupMockEventStream()
 
@@ -96,9 +106,9 @@ describe("streamAnthropicResponse", () => {
       messages: {
         stream: vi.fn(() => mockStream()),
       },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    const result = streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    const result = streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
     expect(result).toBe("sent")
 
     // Wait for the async run() to finish
@@ -119,9 +129,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
 
     await vi.waitFor(() => {
       expect(mockEventStream.close).toHaveBeenCalled()
@@ -142,9 +152,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
 
     await vi.waitFor(() => {
       expect(mockEventStream.close).toHaveBeenCalled()
@@ -167,9 +177,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
 
     await vi.waitFor(() => {
       expect(mockEventStream.close).toHaveBeenCalled()
@@ -194,9 +204,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
 
     await vi.waitFor(() => {
       expect(mockEventStream.close).toHaveBeenCalledTimes(1)
@@ -214,9 +224,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
 
     await vi.waitFor(() => {
       expect(mockEventStream.close).toHaveBeenCalledTimes(1)
@@ -232,9 +242,9 @@ describe("streamAnthropicResponse", () => {
 
     const mockAnthropicClient = {
       messages: { stream: vi.fn(() => mockStream()) },
-    } as any
+    } as unknown as Parameters<typeof streamAnthropicResponse>[1]
 
-    const result = streamAnthropicResponse({} as any, mockAnthropicClient, baseOpts)
+    const result = streamAnthropicResponse(mockEvent(), mockAnthropicClient, baseOpts)
     expect(result).toBe("sent")
     expect(mockEventStream.send).toHaveBeenCalledOnce()
   })
@@ -258,7 +268,7 @@ describe("callAnthropicJson", () => {
           content: [{ type: "text", text: JSON.stringify(expected) }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     const result = await callAnthropicJson(mockClient, baseOpts)
     expect(result).toEqual(expected)
@@ -268,7 +278,9 @@ describe("callAnthropicJson", () => {
     const mockCreate = vi.fn().mockResolvedValue({
       content: [{ type: "text", text: '{"ok":true}' }],
     })
-    const mockClient = { messages: { create: mockCreate } } as any
+    const mockClient = { messages: { create: mockCreate } } as unknown as Parameters<
+      typeof callAnthropicJson
+    >[0]
 
     await callAnthropicJson(mockClient, {
       ...baseOpts,
@@ -292,7 +304,7 @@ describe("callAnthropicJson", () => {
       messages: {
         create: vi.fn().mockResolvedValue({ content: [] }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     // The inner createError (502) is caught by the outer catch and re-thrown as generic 500
     await expect(callAnthropicJson(mockClient, baseOpts)).rejects.toThrow(
@@ -308,7 +320,7 @@ describe("callAnthropicJson", () => {
       messages: {
         create: vi.fn().mockResolvedValue({ content: [] }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(
       callAnthropicJson(mockClient, { ...baseOpts, errorLabel: "style analysis" }),
@@ -324,7 +336,7 @@ describe("callAnthropicJson", () => {
           content: [{ type: "text", text: "not valid json {{{" }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(callAnthropicJson(mockClient, baseOpts)).rejects.toThrow(
       "Failed to parse AI response",
@@ -338,7 +350,7 @@ describe("callAnthropicJson", () => {
           content: [{ type: "text", text: "broken" }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(
       callAnthropicJson(mockClient, { ...baseOpts, errorLabel: "review" }),
@@ -351,7 +363,7 @@ describe("callAnthropicJson", () => {
       messages: {
         create: vi.fn().mockRejectedValue(new Error("API rate limit")),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(callAnthropicJson(mockClient, baseOpts)).rejects.toThrow(
       "AI request failed. Please try again.",
@@ -366,7 +378,7 @@ describe("callAnthropicJson", () => {
       messages: {
         create: vi.fn().mockRejectedValue(new Error("timeout")),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(
       callAnthropicJson(mockClient, { ...baseOpts, errorLabel: "style analysis" }),
@@ -386,7 +398,7 @@ describe("callAnthropicJson", () => {
           ],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     const result = await callAnthropicJson(mockClient, baseOpts)
     expect(result).toEqual(expected)

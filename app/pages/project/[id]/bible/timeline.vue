@@ -10,35 +10,61 @@ const { data: chapters, status: chaptersStatus } = useFetch<Chapter[]>(() => `/a
 const { data: characters } = useFetch<Character[]>(() => `/api/characters?bookId=${projectId}`)
 const { data: locations } = useFetch<Location[]>(() => `/api/locations?bookId=${projectId}`)
 
-// Fetch scenes for each chapter
-const allScenes = ref<Record<string, Scene[]>>({})
-const scenesLoaded = ref(false)
-
-watch(chapters, async (chs) => {
-  if (!chs || !chs.length) {
-    scenesLoaded.value = true
-    return
-  }
-  const chapterList = chs
-  const scenesMap: Record<string, Scene[]> = {}
-  await Promise.all(
-    chapterList.map(async (ch) => {
-      try {
-        const scenes = await $fetch<Scene[]>('/api/scenes', { params: { chapterId: ch.id } })
-        scenesMap[ch.id] = scenes.sort((a, b) => a.sortOrder - b.sortOrder)
-      } catch {
-        scenesMap[ch.id] = []
-      }
-    }),
-  )
-  allScenes.value = scenesMap
-  scenesLoaded.value = true
-}, { immediate: true })
-
 const sortedChapters = computed(() => {
   if (!chapters.value) return []
   return [...chapters.value].sort((a, b) => a.sortOrder - b.sortOrder)
 })
+
+// Fetch scenes for all chapters in one request.
+const allScenes = ref<Record<string, Scene[]>>({})
+const scenesLoaded = ref(false)
+const scenesError = ref<string | null>(null)
+const chapterIds = computed(() => sortedChapters.value.map((chapter) => chapter.id))
+
+watch(
+  chapterIds,
+  async (ids) => {
+    if (!ids.length) {
+      scenesLoaded.value = true
+      allScenes.value = {}
+      scenesError.value = null
+      return
+    }
+
+    scenesLoaded.value = false
+    scenesError.value = null
+
+    try {
+      const scenes = await $fetch<Scene[]>('/api/scenes', {
+        params: { chapterIds: ids.join(',') },
+      })
+
+      const scenesMap: Record<string, Scene[]> = {}
+      for (const id of ids) {
+        scenesMap[id] = []
+      }
+
+      for (const scene of scenes) {
+        if (!scenesMap[scene.chapterId]) {
+          scenesMap[scene.chapterId] = []
+        }
+        scenesMap[scene.chapterId].push(scene)
+      }
+
+      for (const id of ids) {
+        scenesMap[id] = scenesMap[id].sort((a, b) => a.sortOrder - b.sortOrder)
+      }
+
+      allScenes.value = scenesMap
+    } catch {
+      allScenes.value = {}
+      scenesError.value = 'Could not load scene details for the timeline. Chapter cards will still render.'
+    } finally {
+      scenesLoaded.value = true
+    }
+  },
+  { immediate: true },
+)
 
 const characterMap = computed(() => {
   const map = new Map<string, Character>()
@@ -63,8 +89,13 @@ const actLabels: Record<number, string> = {
 }
 
 function actColor(act: number | null): string {
-  const colors: Record<number, string> = { 1: 'info', 2: 'warning', 3: 'success' }
-  return colors[act ?? 1] || 'neutral'
+  type BadgeColor = 'neutral' | 'info' | 'warning' | 'success'
+  const colors: Record<number, BadgeColor> = {
+    1: 'info',
+    2: 'warning',
+    3: 'success',
+  }
+  return colors[act ?? 1] ?? 'neutral'
 }
 
 function statusIcon(status: string | null): string {
@@ -128,6 +159,10 @@ function statusIcon(status: string | null): string {
       <!-- Vertical line -->
       <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-(--ui-border)" />
 
+      <div v-if="scenesError" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        {{ scenesError }}
+      </div>
+
       <div class="space-y-1">
         <template v-for="chapter in sortedChapters" :key="chapter.id">
           <!-- Act divider -->
@@ -136,7 +171,7 @@ function statusIcon(status: string | null): string {
             class="relative flex items-center gap-3 py-3 pl-10"
           >
             <div class="absolute left-2.5 size-3 rounded-full border-2 border-(--ui-border) bg-(--ui-bg)" />
-            <UBadge :color="actColor(chapter.act) as any" variant="soft" size="sm">
+            <UBadge :color="actColor(chapter.act)" variant="soft" size="sm">
               {{ actLabels[chapter.act ?? 1] || `Act ${chapter.act}` }}
             </UBadge>
           </div>

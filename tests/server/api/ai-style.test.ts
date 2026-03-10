@@ -4,7 +4,7 @@ import { callAnthropicJson } from "../../../server/utils/ai-stream"
 
 // Mock Nitro auto-imports used by ai-stream.ts
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
-  const err = new Error(opts.message) as any
+  const err = new Error(opts.message) as Error & { statusCode: number }
   err.statusCode = opts.statusCode
   return err
 })
@@ -43,7 +43,7 @@ describe("AI Style Analysis", () => {
           content: [{ type: "text", text: JSON.stringify(mockResponse) }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     const result = await callAnthropicJson<typeof mockResponse>(mockAnthropicClient, {
       model: "test-model",
@@ -64,7 +64,7 @@ describe("AI Style Analysis", () => {
       messages: {
         create: vi.fn().mockRejectedValue(new Error("API rate limit")),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(
       callAnthropicJson(mockAnthropicClient, {

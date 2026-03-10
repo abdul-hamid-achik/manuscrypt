@@ -14,17 +14,31 @@ export function useStyleAnalysis() {
   const analysis = ref<StyleAnalysis | null>(null)
   const error = ref<string | null>(null)
 
-  async function analyze(text: string) {
+  async function analyze(text: string, bookId?: string) {
     isAnalyzing.value = true
     error.value = null
     analysis.value = null
     try {
       analysis.value = await $fetch<StyleAnalysis>('/api/ai/style-analyze', {
         method: 'POST',
-        body: { text },
+        body: { text, bookId },
       })
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Style analysis failed'
+    } catch (e: unknown) {
+      if (e && typeof e === 'object' && 'data' in e) {
+        const err = e as { data?: { message?: unknown } }
+        if (typeof err.data?.message === 'string') {
+          error.value = err.data.message
+          return
+        }
+      }
+
+      if (e && typeof e === 'object' && 'message' in e) {
+        const err = e as { message?: unknown }
+        error.value = typeof err.message === 'string' ? err.message : 'Style analysis failed'
+        return
+      }
+
+      error.value = 'Style analysis failed'
     } finally {
       isAnalyzing.value = false
     }

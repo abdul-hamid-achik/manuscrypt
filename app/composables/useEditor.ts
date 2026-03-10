@@ -16,6 +16,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
   const saveError = ref<string | null>(null)
   const lastSavedContent = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+  const contentLoaded = ref(false)
 
   // Draft recovery state
   const hasDraftRecovery = ref(false)
@@ -76,7 +77,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
       CharacterCount,
       SearchAndReplace,
     ],
-    ...({ immediatelyRender: false } as any),
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: "writing-mode ProseMirror prose prose-stone dark:prose-invert max-w-none focus:outline-none",
@@ -118,6 +119,10 @@ export function useWritingEditor(chapterId: Ref<string>) {
 
   // Load initial content — wait for editor to be ready
   async function loadContent(initialChapter?: { content: string | null; updatedAt?: string } | null) {
+    contentLoaded.value = false
+    hasDraftRecovery.value = false
+    draftContent.value = null
+
     // If editor isn't ready yet, watch for it
     const ed = editor.value
     if (!ed) {
@@ -138,10 +143,26 @@ export function useWritingEditor(chapterId: Ref<string>) {
       let serverTimestamp = 0
 
       if (chapter?.content) {
-        serverJson =
-          typeof chapter.content === "string"
-            ? JSON.parse(chapter.content)
-            : chapter.content
+        if (typeof chapter.content === "string") {
+          try {
+            const parsed = JSON.parse(chapter.content)
+            if (typeof parsed === "object" && parsed !== null) {
+              serverJson = parsed
+            }
+          } catch {
+            serverJson = {
+              type: "doc",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: chapter.content }],
+                },
+              ],
+            }
+          }
+        } else {
+          serverJson = chapter.content
+        }
         serverTimestamp = chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : 0
       }
 
@@ -163,13 +184,18 @@ export function useWritingEditor(chapterId: Ref<string>) {
         // ignore localStorage errors
       }
 
-      // Load server content
+      // Load server content or empty doc if neither valid server content nor recoverable draft exists.
       if (serverJson) {
         ed.commands.setContent(serverJson)
         lastSavedContent.value = JSON.stringify(serverJson)
+      } else if (!hasDraftRecovery.value) {
+        ed.commands.setContent("")
+        lastSavedContent.value = null
       }
     } catch (e) {
       console.warn("[Manuscrypt] Failed to load chapter content:", e instanceof Error ? e.message : e)
+    } finally {
+      contentLoaded.value = true
     }
   }
 
@@ -243,6 +269,7 @@ export function useWritingEditor(chapterId: Ref<string>) {
     editor,
     wordCount,
     characterCount,
+    contentLoaded: readonly(contentLoaded),
     isSaving: readonly(isSaving),
     lastSavedAt: readonly(lastSavedAt),
     saveError: readonly(saveError),

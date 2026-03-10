@@ -8,17 +8,21 @@ interface AiContext {
 export function useAiAssistant(
   bookId: string,
   characterId?: Ref<string | undefined> | (() => string | undefined),
+  chapterId?: Ref<string | undefined> | (() => string | undefined),
 ) {
   const store = useAiChatStore()
 
   const resolvedCharId = computed(() =>
     typeof characterId === "function" ? characterId() : toValue(characterId),
   )
+  const resolvedChapterId = computed(() =>
+    typeof chapterId === "function" ? chapterId() : toValue(chapterId),
+  )
 
   const sessionKey = computed(() =>
     resolvedCharId.value
       ? `interview:${bookId}:${resolvedCharId.value}`
-      : `general:${bookId}`,
+      : `general:${bookId}:${resolvedChapterId.value ?? "global"}`,
   )
 
   const session = computed(() => store.getSession(sessionKey.value))
@@ -57,6 +61,7 @@ export function useAiAssistant(
     try {
       const params: Record<string, string> = { bookId }
       if (resolvedCharId.value) params.characterId = resolvedCharId.value
+      if (!resolvedCharId.value && resolvedChapterId.value) params.chapterId = resolvedChapterId.value
       const data = await $fetch<Array<{ id: string; role: string; content: string; command?: string; createdAt: string }>>("/api/ai/messages", {
         params,
       })
@@ -93,6 +98,7 @@ export function useAiAssistant(
       timestamp: new Date(),
     }
     s.messages.push(userMsg)
+    saveMessage({ role: "user", content: userMessage, command }, context)
 
     let usedWriteTools = false
 
@@ -138,7 +144,9 @@ export function useAiAssistant(
         }
       })
 
-      if (fullText) {
+      const isPlaceholderDone = usedWriteTools && fullText.trim() === "Done."
+      const assistantText = fullText.trim()
+      if (assistantText && !isPlaceholderDone) {
         s.messages.push({
           id: crypto.randomUUID(),
           role: "assistant",
@@ -147,7 +155,6 @@ export function useAiAssistant(
           timestamp: new Date(),
         })
 
-        saveMessage({ role: "user", content: userMessage, command }, context)
         saveMessage({ role: "assistant", content: fullText, command }, context)
       }
     } catch (e) {
@@ -175,6 +182,7 @@ export function useAiAssistant(
       content: message,
       timestamp: new Date(),
     })
+    saveMessage({ role: "user", content: message, characterId: charId })
 
     const history = s.messages.slice(0, -1).map((m) => ({
       role: m.role,
@@ -198,14 +206,14 @@ export function useAiAssistant(
         }
       })
 
-      if (fullText) {
+      const assistantText = fullText.trim()
+      if (assistantText && assistantText !== "Done.") {
         s.messages.push({
           id: crypto.randomUUID(),
           role: "assistant",
           content: fullText,
           timestamp: new Date(),
         })
-        saveMessage({ role: "user", content: message, characterId: charId })
         saveMessage({ role: "assistant", content: fullText, characterId: charId })
       }
 
@@ -223,6 +231,7 @@ export function useAiAssistant(
     try {
       const params: Record<string, string> = { bookId }
       if (resolvedCharId.value) params.characterId = resolvedCharId.value
+      if (!resolvedCharId.value && resolvedChapterId.value) params.chapterId = resolvedChapterId.value
       await $fetch("/api/ai/messages", { method: "DELETE", params })
     } catch {
       // Best-effort server-side cleanup

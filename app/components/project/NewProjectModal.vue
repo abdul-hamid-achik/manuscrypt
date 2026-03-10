@@ -39,7 +39,7 @@ async function submit() {
       styleGuide: form.styleGuide || undefined,
     })
     open.value = false
-    await router.push(`/project/${(book as any).id}`)
+    await router.push(`/project/${book.id}`)
   } catch (e) {
     toast.add({ title: 'Error', description: e instanceof Error ? e.message : 'Something went wrong', color: 'error' })
   } finally {

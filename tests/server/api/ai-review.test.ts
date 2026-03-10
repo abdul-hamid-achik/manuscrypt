@@ -21,7 +21,7 @@ const { db, sqlite } = vi.hoisted(() => {
 
 // Mock Nitro auto-imports
 vi.stubGlobal("createError", (opts: { statusCode: number; message: string }) => {
-  const err = new Error(opts.message) as any
+  const err = new Error(opts.message) as Error & { statusCode: number }
   err.statusCode = opts.statusCode
   return err
 })
@@ -69,7 +69,7 @@ describe("callAnthropicJson", () => {
           content: [{ type: "text", text: '{"score": 8, "feedback": "Great"}' }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     const result = await callAnthropicJson<{ score: number; feedback: string }>(mockAnthropicClient, {
       model: "test-model",
@@ -89,7 +89,7 @@ describe("callAnthropicJson", () => {
           content: [{ type: "text", text: "not valid json {" }],
         }),
       },
-    } as any
+    } as unknown as Parameters<typeof callAnthropicJson>[0]
 
     await expect(
       callAnthropicJson(mockAnthropicClient, {
