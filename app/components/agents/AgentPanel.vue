@@ -5,6 +5,10 @@ export interface SelectionSnapshot {
   to: number
 }
 
+export interface AgentPanelHandle {
+  executeCommand: (command: string, selectedText?: string) => Promise<void> | void
+}
+
 const props = defineProps<{
   bookId: string
   chapterId: string
@@ -16,10 +20,14 @@ const chatInput = ref("")
 const messagesContainer = ref<HTMLElement | null>(null)
 
 const { isStreaming, streamedText, messages, error, activeTools, send, clearMessages, loadHistory } =
-  useAiAssistant(props.bookId)
+  useAiAssistant(props.bookId, undefined, () => props.chapterId)
 
 // Load persisted general chat history on mount
-onMounted(() => loadHistory())
+watch(
+  () => props.chapterId,
+  () => loadHistory(),
+  { immediate: true },
+)
 
 // --- Selection snapshot system ---
 // Captured eagerly when the user focuses the chat input (before editor loses focus)
@@ -126,7 +134,7 @@ const emit = defineEmits<{
   refresh: []
 }>()
 
-defineExpose({ executeCommand })
+defineExpose<AgentPanelHandle>({ executeCommand })
 </script>
 
 <template>

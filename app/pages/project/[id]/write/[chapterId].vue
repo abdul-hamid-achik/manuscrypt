@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
 import type { Chapter, Book } from '~~/shared/types'
+import type { AgentPanelHandle } from "~/components/agents/AgentPanel.vue"
+import type { WritingEditorHandle } from "~/components/editor/WritingEditor.vue"
 
 definePageMeta({
   layout: "writing",
@@ -8,9 +10,14 @@ definePageMeta({
 
 const route = useRoute()
 const projectId = route.params.id as string
-const chapterId = route.params.chapterId as string
+const chapterId = computed(() => route.params.chapterId as string)
 
-const { data: chapter, error: chapterError } = await useFetch<Chapter>(`/api/chapters/${chapterId}`)
+const { data: chapter, error: chapterError } = await useFetch<Chapter>(
+  () => `/api/chapters/${chapterId.value}`,
+  {
+    watch: [chapterId],
+  },
+)
 const { data: book, error: bookError } = await useFetch<Book>(`/api/books/${projectId}`)
 const { data: allChapters, error: chaptersError } = await useFetch<Chapter[]>(`/api/chapters`, { params: { bookId: projectId } })
 
@@ -21,7 +28,7 @@ const sortedChapters = computed(() =>
   [...(allChapters.value ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
 )
 const currentIndex = computed(() =>
-  sortedChapters.value.findIndex((c) => c.id === chapterId)
+  sortedChapters.value.findIndex((c) => c.id === chapterId.value)
 )
 const prevChapter = computed(() =>
   currentIndex.value > 0 ? sortedChapters.value[currentIndex.value - 1] : null
@@ -43,13 +50,15 @@ watchEffect(() => {
   nextChapterTitle.value = nextChapter.value?.title || `Chapter ${nextChapter.value?.number}`
 })
 
-const editorRef = ref<any>(null)
-const agentPanelRef = ref<any>(null)
+const editorRef = ref<WritingEditorHandle | null>(null)
+const agentPanelRef = ref<AgentPanelHandle | null>(null)
 
 // Share state with the writing layout via useState — set values explicitly
 // since the layout may initialize these first with defaults
 const chapterTitle = useState<string>("writingChapterTitle", () => "Untitled")
-chapterTitle.value = chapter.value?.title ?? "Untitled Chapter"
+watchEffect(() => {
+  chapterTitle.value = chapter.value?.title ?? "Untitled Chapter"
+})
 
 const bookTitle = useState<string>("writingBookTitle", () => "")
 bookTitle.value = book.value?.title ?? ""
@@ -60,6 +69,8 @@ writingProjectId.value = projectId
 const writingWordCount = useState<number>("writingWordCount", () => 0)
 const writingSaveStatus = useState<string>("writingSaveStatus", () => "")
 const writingSessionDuration = useState<string>("writingSessionDuration", () => "")
+const editorContentLoaded = computed(() => editorRef.value?.contentLoaded?.value ?? false)
+const activeSessionChapterId = ref<string | null>(null)
 
 // Writing stats
 const stats = useWritingStats(projectId)
@@ -87,7 +98,7 @@ onBeforeUnmount(() => {
 
 // Save chapter title on change
 const debouncedTitleSave = useDebounceFn(async (title: string) => {
-  await $fetch(`/api/chapters/${chapterId}` as string, {
+  await $fetch(`/api/chapters/${chapterId.value}`, {
     method: "PUT",
     body: { title },
   })
@@ -125,18 +136,54 @@ function handleReplaceFromAgent(text: string, from: number, to: number) {
 const hasDraftRecovery = computed(() => editorRef.value?.hasDraftRecovery?.value ?? false)
 function recoverDraft() { editorRef.value?.recoverDraft() }
 function dismissRecovery() { editorRef.value?.dismissRecovery() }
+function getEditorSnapshot() {
+  return editorRef.value?.getSelectionSnapshot() ?? null
+}
 
 // Focus mode state from layout
 const focusMode = useState<boolean>("writingFocusMode", () => false)
 
-onMounted(() => {
-  const initialWordCount = editorRef.value?.wordCount?.value ?? 0
-  stats.startSession(initialWordCount)
-})
+watch(chapterId, async (newChapterId, oldChapterId) => {
+  if (oldChapterId && newChapterId !== oldChapterId) {
+    await stats.endSession(oldChapterId)
+    activeSessionChapterId.value = null
+  }
+}, { immediate: false })
+
+watch(
+  () => [chapterId.value, editorContentLoaded.value],
+  async ([activeChapterId, isContentLoaded]) => {
+    if (!activeChapterId || !isContentLoaded) return
+    if (activeSessionChapterId.value === activeChapterId) return
+
+    const initialWordCount = editorRef.value?.wordCount?.value ?? 0
+    await stats.startSession(initialWordCount, activeChapterId)
+    activeSessionChapterId.value = activeChapterId
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
-  stats.endSession(chapterId)
+  void stats.endSession(chapterId.value)
+  activeSessionChapterId.value = null
 })
+
+onBeforeRouteLeave(async () => {
+  await stats.endSession(chapterId.value)
+  activeSessionChapterId.value = null
+})
+
+if (import.meta.client) {
+  const handleBeforeUnload = () => {
+    stats.endSessionForUnload(chapterId.value)
+  }
+  onMounted(() => {
+    window.addEventListener("beforeunload", handleBeforeUnload)
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload)
+  })
+}
 </script>
 
 <template>
@@ -184,7 +231,7 @@ onBeforeUnmount(() => {
       ref="agentPanelRef"
       :book-id="projectId"
       :chapter-id="chapterId"
-      :get-editor-snapshot="() => editorRef?.getSelectionSnapshot() ?? null"
+      :get-editor-snapshot="getEditorSnapshot"
       @insert="handleInsertFromAgent"
       @replace="handleReplaceFromAgent"
     />

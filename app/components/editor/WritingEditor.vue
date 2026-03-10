@@ -1,5 +1,25 @@
 <script setup lang="ts">
 import { EditorContent } from "@tiptap/vue-3"
+import type { SelectionSnapshot } from "~/components/agents/AgentPanel.vue"
+
+export interface WritingEditorHandle {
+  getSelectedText: () => string
+  getSelectionSnapshot: () => SelectionSnapshot | null
+  getTrailingText: (wordCount?: number) => string
+  insertAtCursor: (text: string) => void
+  replaceSelection: (text: string) => void
+  replaceRange: (from: number, to: number, text: string) => void
+  wordCount: { value: number }
+  characterCount: { value: number }
+  saveStatus: { value: string }
+  editor: { value: unknown }
+  hasDraftRecovery: { value: boolean }
+  recoverDraft: () => void
+  dismissRecovery: () => void
+  contentLoaded: { value: boolean }
+  toggleSearch: () => void
+  toggleVersionHistory: () => void
+}
 
 const props = withDefaults(defineProps<{
   chapterId: string
@@ -24,6 +44,7 @@ const {
   getSelectionSnapshot,
   getTrailingText,
   insertAtCursor,
+  contentLoaded,
   replaceSelection,
   replaceRange,
   hasDraftRecovery,
@@ -34,6 +55,13 @@ const {
 onMounted(() => {
   loadContent(props.initialChapter)
 })
+
+watch(
+  () => props.chapterId,
+  () => {
+    loadContent(props.initialChapter)
+  },
+)
 
 function toggleSearch() {
   showFindReplace.value = !showFindReplace.value
@@ -72,7 +100,7 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown)
 })
 
-defineExpose({
+defineExpose<WritingEditorHandle>({
   getSelectedText,
   getSelectionSnapshot,
   getTrailingText,
@@ -86,6 +114,7 @@ defineExpose({
   hasDraftRecovery,
   recoverDraft,
   dismissRecovery,
+  contentLoaded,
   toggleSearch,
   toggleVersionHistory,
 })
